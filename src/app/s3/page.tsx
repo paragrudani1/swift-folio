@@ -41,6 +41,9 @@ export default function S3Explorer() {
   const [newFolderName, setNewFolderName] = useState("");
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+  const [currentlyUploadingFolder, setCurrentlyUploadingFolder] = useState<
+    string | null
+  >(null);
 
   const handleLogout = () => {
     setS3Client(null);
@@ -51,7 +54,7 @@ export default function S3Explorer() {
     setCurrentPrefix("");
     setError(null);
     setStorageUsage(null);
-    
+
     // Clear credentials from localStorage
     localStorage.removeItem("aws_credentials");
     localStorage.removeItem("aws_bucket_name");
@@ -62,11 +65,11 @@ export default function S3Explorer() {
     if (!sortConfig) return 0;
     const aValue = a[sortConfig.key];
     const bValue = b[sortConfig.key];
-    
+
     if (aValue == null && bValue == null) return 0;
     if (aValue == null) return 1;
     if (bValue == null) return -1;
-    
+
     if (aValue < bValue) {
       return sortConfig.direction === "ascending" ? -1 : 1;
     }
@@ -130,7 +133,10 @@ export default function S3Explorer() {
             // Attempt to auto-login with saved credentials
             const client = new S3Client({
               region: savedRegion || "us-east-1", // Use saved region or default
-              credentials: {accessKeyId: decryptedCreds.accessKeyId, secretAccessKey: decryptedCreds.secretAccessKey},
+              credentials: {
+                accessKeyId: decryptedCreds.accessKeyId,
+                secretAccessKey: decryptedCreds.secretAccessKey,
+              },
             });
             setS3Client(client);
 
@@ -142,7 +148,10 @@ export default function S3Explorer() {
           }
         }
       } catch (error) {
-        console.error("autoLogin: Failed to load credentials from localStorage:", error);
+        console.error(
+          "autoLogin: Failed to load credentials from localStorage:",
+          error
+        );
         // Only clear localStorage if there was an attempt to load credentials that failed
         const savedCreds = localStorage.getItem("aws_credentials");
         if (savedCreds) {
@@ -191,79 +200,89 @@ export default function S3Explorer() {
     setSelectedBucket(bucketNameInput);
   };
 
-  const getBucketStorageUsage = useCallback(async (bucketName: string) => {
-    if (!s3Client) return;
-    setLoadingStorageUsage(true);
-    let totalSize = 0;
-    let isTruncated = true;
-    let continuationToken: string | undefined = undefined;
+  const getBucketStorageUsage = useCallback(
+    async (bucketName: string) => {
+      if (!s3Client) return;
+      setLoadingStorageUsage(true);
+      let totalSize = 0;
+      let isTruncated = true;
+      let continuationToken: string | undefined = undefined;
 
-    try {
-      while (isTruncated) {
-        const command: ListObjectsV2Command = new ListObjectsV2Command({
-          Bucket: bucketName,
-          ContinuationToken: continuationToken,
-        });
-        const response = await s3Client.send(command);
-        totalSize +=
-          response.Contents?.reduce((sum, obj) => sum + (obj.Size || 0), 0) ||
-          0;
-        isTruncated = response.IsTruncated || false;
-        continuationToken = response.NextContinuationToken;
+      try {
+        while (isTruncated) {
+          const command: ListObjectsV2Command = new ListObjectsV2Command({
+            Bucket: bucketName,
+            ContinuationToken: continuationToken,
+          });
+          const response = await s3Client.send(command);
+          totalSize +=
+            response.Contents?.reduce((sum, obj) => sum + (obj.Size || 0), 0) ||
+            0;
+          isTruncated = response.IsTruncated || false;
+          continuationToken = response.NextContinuationToken;
+        }
+        setStorageUsage(totalSize);
+      } catch (err) {
+        console.error(
+          `Failed to get storage usage for bucket ${bucketName}:`,
+          err
+        );
+        setStorageUsage(null);
+      } finally {
+        setLoadingStorageUsage(false);
       }
-      setStorageUsage(totalSize);
-    } catch (err) {
-      console.error(
-        `Failed to get storage usage for bucket ${bucketName}:`,
-        err
-      );
-      setStorageUsage(null);
-    } finally {
-      setLoadingStorageUsage(false);
-    }
-  }, [s3Client]);
+    },
+    [s3Client]
+  );
 
-  const listObjects = useCallback(async (bucketName: string, prefix: string) => {
-    if (!s3Client) {
-      return;
-    }
+  const listObjects = useCallback(
+    async (bucketName: string, prefix: string) => {
+      if (!s3Client) {
+        return;
+      }
 
-    try {
-      const command = new ListObjectsV2Command({
-        Bucket: bucketName,
-        Delimiter: "/",
-        Prefix: prefix,
-      });
-      const response = await s3Client?.send(command);
-      
-      // Filter out invalid prefixes before setting state
-      const validPrefixes = (response?.CommonPrefixes || []).filter(p => {
-        const folderName = p.Prefix?.replace(prefix, "").replace(/\/$/, "");
-        
-        // Filter out current directory, empty names, and nested paths
-        const isValid = folderName && 
-                       folderName.trim().length > 0 && 
-                       p.Prefix !== prefix && // Don't include current directory
-                       !folderName.includes('/'); // Only direct child folders
-        
-        return isValid;
-      });
-      
-      // Filter out directory markers from objects
-      const validObjects = (response?.Contents || []).filter(obj => {
-        return obj.Key && !obj.Key.endsWith('/'); // Filter out directory markers
-      });
-      
-      setObjects(validObjects);
-      setPrefixes(validPrefixes);
-      setError(null);
-    } catch (err) {
-      console.error(`listObjects: Failed to list objects in bucket ${bucketName}:`, err);
-      setError(`Failed to list objects in bucket ${bucketName}.`);
-      setObjects([]);
-      setPrefixes([]);
-    }
-  }, [s3Client]);
+      try {
+        const command = new ListObjectsV2Command({
+          Bucket: bucketName,
+          Delimiter: "/",
+          Prefix: prefix,
+        });
+        const response = await s3Client?.send(command);
+
+        // Filter out invalid prefixes before setting state
+        const validPrefixes = (response?.CommonPrefixes || []).filter((p) => {
+          const folderName = p.Prefix?.replace(prefix, "").replace(/\/$/, "");
+
+          // Filter out current directory, empty names, and nested paths
+          const isValid =
+            folderName &&
+            folderName.trim().length > 0 &&
+            p.Prefix !== prefix && // Don't include current directory
+            !folderName.includes("/"); // Only direct child folders
+
+          return isValid;
+        });
+
+        // Filter out directory markers from objects
+        const validObjects = (response?.Contents || []).filter((obj) => {
+          return obj.Key && !obj.Key.endsWith("/"); // Filter out directory markers
+        });
+
+        setObjects(validObjects);
+        setPrefixes(validPrefixes);
+        setError(null);
+      } catch (err) {
+        console.error(
+          `listObjects: Failed to list objects in bucket ${bucketName}:`,
+          err
+        );
+        setError(`Failed to list objects in bucket ${bucketName}.`);
+        setObjects([]);
+        setPrefixes([]);
+      }
+    },
+    [s3Client]
+  );
 
   const handlePrefixClick = (prefix: string) => {
     setCurrentPrefix(prefix);
@@ -272,15 +291,17 @@ export default function S3Explorer() {
 
   const handleBackClick = () => {
     // Remove the trailing slash if it exists, then get parent directory
-    const trimmedPrefix = currentPrefix.endsWith("/") ? currentPrefix.slice(0, -1) : currentPrefix;
+    const trimmedPrefix = currentPrefix.endsWith("/")
+      ? currentPrefix.slice(0, -1)
+      : currentPrefix;
     const pathParts = trimmedPrefix.split("/");
-    
+
     // Remove the last part (current folder) to get parent
     pathParts.pop();
-    
+
     // Join back and add trailing slash if there are remaining parts
     const parentPrefix = pathParts.length > 0 ? pathParts.join("/") + "/" : "";
-    
+
     setCurrentPrefix(parentPrefix);
     listObjects(selectedBucket!, parentPrefix);
   };
@@ -288,11 +309,14 @@ export default function S3Explorer() {
   const handleUploadSuccess = () => {
     listObjects(selectedBucket!, currentPrefix);
     setUploadProgress(null);
+    setCurrentlyUploadingFolder(null); // Clear folder name when upload completes
   };
 
   const handleUploadProgress = (progress: number) => {
     setUploadProgress(progress);
   };
+
+
 
   const handleDownload = async (key: string) => {
     if (!s3Client) return;
@@ -369,7 +393,13 @@ export default function S3Explorer() {
       listObjects(selectedBucket, currentPrefix);
       getBucketStorageUsage(selectedBucket);
     }
-  }, [s3Client, selectedBucket, currentPrefix, getBucketStorageUsage, listObjects]);
+  }, [
+    s3Client,
+    selectedBucket,
+    currentPrefix,
+    getBucketStorageUsage,
+    listObjects,
+  ]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
@@ -379,16 +409,33 @@ export default function S3Explorer() {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center space-x-3">
               <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center">
-                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 1v6m8-6v6" />
+                <svg
+                  className="w-5 h-5 sm:w-6 sm:h-6 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M8 1v6m8-6v6"
+                  />
                 </svg>
               </div>
               <div>
                 <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
                   Swift S3 Explorer
                 </h1>
-                <p className="text-xs sm:text-sm text-slate-500 hidden sm:block">Manage your AWS S3 buckets with ease</p>
+                <p className="text-xs sm:text-sm text-slate-500 hidden sm:block">
+                  Manage your AWS S3 buckets with ease
+                </p>
               </div>
             </div>
             {s3Client && selectedBucket && (
@@ -410,8 +457,18 @@ export default function S3Explorer() {
                   className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors duration-200 text-sm"
                   title="Logout"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                    />
                   </svg>
                   <span className="hidden sm:inline">Logout</span>
                 </button>
@@ -429,17 +486,33 @@ export default function S3Explorer() {
               <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-2xl border border-white/20 p-6 sm:p-8">
                 <div className="text-center mb-6 sm:mb-8">
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <svg className="w-6 h-6 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                    <svg
+                      className="w-6 h-6 sm:w-8 sm:h-8 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
+                      />
                     </svg>
                   </div>
-                  <h2 className="text-xl sm:text-2xl font-bold text-slate-800 mb-2">Connect to AWS S3</h2>
-                  <p className="text-sm sm:text-base text-slate-600">Enter your credentials to get started</p>
+                  <h2 className="text-xl sm:text-2xl font-bold text-slate-800 mb-2">
+                    Connect to AWS S3
+                  </h2>
+                  <p className="text-sm sm:text-base text-slate-600">
+                    Enter your credentials to get started
+                  </p>
                 </div>
 
                 <div className="space-y-4 sm:space-y-6">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-700">Access Key ID</label>
+                    <label className="text-sm font-medium text-slate-700">
+                      Access Key ID
+                    </label>
                     <input
                       type="text"
                       name="accessKeyId"
@@ -451,7 +524,9 @@ export default function S3Explorer() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-700">Secret Access Key</label>
+                    <label className="text-sm font-medium text-slate-700">
+                      Secret Access Key
+                    </label>
                     <input
                       type="password"
                       name="secretAccessKey"
@@ -463,7 +538,9 @@ export default function S3Explorer() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-700">Bucket Name (Optional)</label>
+                    <label className="text-sm font-medium text-slate-700">
+                      Bucket Name (Optional)
+                    </label>
                     <input
                       type="text"
                       name="bucketName"
@@ -475,7 +552,9 @@ export default function S3Explorer() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-700">AWS Region</label>
+                    <label className="text-sm font-medium text-slate-700">
+                      AWS Region
+                    </label>
                     <input
                       type="text"
                       name="region"
@@ -494,7 +573,10 @@ export default function S3Explorer() {
                       onChange={(e) => setSaveCredentials(e.target.checked)}
                       className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
                     />
-                    <label htmlFor="saveCredentials" className="text-sm font-medium text-slate-700">
+                    <label
+                      htmlFor="saveCredentials"
+                      className="text-sm font-medium text-slate-700"
+                    >
                       Remember my credentials securely
                     </label>
                   </div>
@@ -541,8 +623,18 @@ export default function S3Explorer() {
                       onClick={handleBackClick}
                       className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors duration-200 text-sm"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M15 19l-7-7 7-7"
+                        />
                       </svg>
                       <span className="hidden sm:inline">Back</span>
                     </button>
@@ -556,8 +648,18 @@ export default function S3Explorer() {
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                     />
-                    <svg className="w-4 h-4 text-slate-400 absolute left-2 sm:left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    <svg
+                      className="w-4 h-4 text-slate-400 absolute left-2 sm:left-3 top-3"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
                     </svg>
                   </div>
 
@@ -565,8 +667,18 @@ export default function S3Explorer() {
                     onClick={handleCreateFolderClick}
                     className="flex items-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl text-sm whitespace-nowrap"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                      />
                     </svg>
                     <span className="hidden sm:inline">New Folder</span>
                     <span className="sm:hidden">New</span>
@@ -587,7 +699,11 @@ export default function S3Explorer() {
               {uploadProgress !== null && (
                 <div className="mt-4">
                   <div className="flex justify-between text-sm text-slate-600 mb-2">
-                    <span>Uploading...</span>
+                    <span>
+                      {currentlyUploadingFolder
+                        ? `Uploading folder: ${currentlyUploadingFolder}`
+                        : "Uploading..."}
+                    </span>
                     <span>{uploadProgress}%</span>
                   </div>
                   <div className="w-full bg-slate-200 rounded-full h-2">
@@ -603,9 +719,11 @@ export default function S3Explorer() {
             {/* Files and Folders Grid */}
             <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 overflow-hidden">
               <div className="p-4 sm:p-6 border-b border-slate-200">
-                <h3 className="text-lg font-semibold text-slate-800">Files & Folders</h3>
+                <h3 className="text-lg font-semibold text-slate-800">
+                  Files & Folders
+                </h3>
               </div>
-              
+
               {/* Desktop Table View */}
               <div className="hidden sm:block overflow-x-auto">
                 <table className="w-full">
@@ -617,8 +735,18 @@ export default function S3Explorer() {
                       >
                         <div className="flex items-center space-x-2">
                           <span>Name</span>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
+                            />
                           </svg>
                         </div>
                       </th>
@@ -628,8 +756,18 @@ export default function S3Explorer() {
                       >
                         <div className="flex items-center space-x-2">
                           <span>Modified</span>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
+                            />
                           </svg>
                         </div>
                       </th>
@@ -639,28 +777,46 @@ export default function S3Explorer() {
                       >
                         <div className="flex items-center space-x-2">
                           <span>Size</span>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
+                            />
                           </svg>
                         </div>
                       </th>
-                      <th className="px-6 py-4 text-left text-sm font-medium text-slate-600">Actions</th>
+                      <th className="px-6 py-4 text-left text-sm font-medium text-slate-600">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
                     {/* Folders */}
                     {prefixes
                       .map((prefix) => {
-                        const folderName = prefix.Prefix?.replace(currentPrefix, "").replace(/\/$/, "");
+                        const folderName = prefix.Prefix?.replace(
+                          currentPrefix,
+                          ""
+                        ).replace(/\/$/, "");
                         return { ...prefix, folderName };
                       })
                       .filter((item) => {
                         // Filter out the current directory itself and empty/invalid names
-                        const isValid = item.folderName && 
-                                       item.folderName.trim().length > 0 && 
-                                       item.Prefix !== currentPrefix && // Don't show current directory as a folder
-                                       !item.folderName.includes('/') && // Only direct child folders
-                                       item.folderName.toLowerCase().includes(searchTerm.toLowerCase());
+                        const isValid =
+                          item.folderName &&
+                          item.folderName.trim().length > 0 &&
+                          item.Prefix !== currentPrefix && // Don't show current directory as a folder
+                          !item.folderName.includes("/") && // Only direct child folders
+                          item.folderName
+                            .toLowerCase()
+                            .includes(searchTerm.toLowerCase());
                         return isValid;
                       })
                       .map((item) => (
@@ -672,8 +828,18 @@ export default function S3Explorer() {
                           <td className="px-6 py-4">
                             <div className="flex items-center space-x-3">
                               <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
+                                <svg
+                                  className="w-5 h-5 text-blue-600"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth="2"
+                                    d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"
+                                  />
                                 </svg>
                               </div>
                               <span className="font-medium text-slate-800">
@@ -686,30 +852,44 @@ export default function S3Explorer() {
                           <td className="px-6 py-4 text-slate-500">—</td>
                         </tr>
                       ))}
-                    
+
                     {/* Files */}
                     {sortedObjects
                       .filter((o) => {
                         // Filter out directory markers and ensure we have a valid filename
-                        const fileName = o.Key?.replace(currentPrefix, "").split('/').pop();
-                        return o.Key && 
-                               !o.Key.endsWith('/') && // Not a directory marker
-                               fileName && 
-                               fileName.trim().length > 0 && 
-                               o.Key.toLowerCase().includes(searchTerm.toLowerCase());
+                        const fileName = o.Key?.replace(currentPrefix, "")
+                          .split("/")
+                          .pop();
+                        return (
+                          o.Key &&
+                          !o.Key.endsWith("/") && // Not a directory marker
+                          fileName &&
+                          fileName.trim().length > 0 &&
+                          o.Key.toLowerCase().includes(searchTerm.toLowerCase())
+                        );
                       })
                       .map((object) => (
-                        <tr key={object.Key} className="hover:bg-slate-50 transition-colors duration-200">
+                        <tr
+                          key={object.Key}
+                          className="hover:bg-slate-50 transition-colors duration-200"
+                        >
                           <td className="px-6 py-4">
                             <div className="flex items-center space-x-3">
                               <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
-                                <span className="text-lg" dangerouslySetInnerHTML={{ __html: getFileIcon(object.Key!) }}></span>
+                                <span
+                                  className="text-lg"
+                                  dangerouslySetInnerHTML={{
+                                    __html: getFileIcon(object.Key!),
+                                  }}
+                                ></span>
                               </div>
-                              <span 
-                                className="font-medium text-slate-800 truncate max-w-xs cursor-help" 
+                              <span
+                                className="font-medium text-slate-800 truncate max-w-xs cursor-help"
                                 title={object.Key?.replace(currentPrefix, "")}
                               >
-                                {object.Key?.replace(currentPrefix, "").split('/').pop() || "Unnamed File"}
+                                {object.Key?.replace(currentPrefix, "")
+                                  .split("/")
+                                  .pop() || "Unnamed File"}
                               </span>
                             </div>
                           </td>
@@ -717,7 +897,9 @@ export default function S3Explorer() {
                             {object.LastModified?.toLocaleDateString()}
                           </td>
                           <td className="px-6 py-4 text-slate-600 text-sm">
-                            {object.Size ? `${(object.Size / 1024).toFixed(1)} KB` : "—"}
+                            {object.Size
+                              ? `${(object.Size / 1024).toFixed(1)} KB`
+                              : "—"}
                           </td>
                           <td className="px-6 py-4">
                             <div className="flex items-center space-x-2">
@@ -725,8 +907,18 @@ export default function S3Explorer() {
                                 onClick={() => handleDownload(object.Key!)}
                                 className="flex items-center space-x-1 px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition-colors duration-200"
                               >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth="2"
+                                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                                  />
                                 </svg>
                                 <span className="text-sm">Download</span>
                               </button>
@@ -734,8 +926,18 @@ export default function S3Explorer() {
                                 onClick={() => handleDelete(object.Key!)}
                                 className="flex items-center space-x-1 px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors duration-200"
                               >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth="2"
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                  />
                                 </svg>
                                 <span className="text-sm">Delete</span>
                               </button>
@@ -752,16 +954,22 @@ export default function S3Explorer() {
                 {/* Folders */}
                 {prefixes
                   .map((prefix) => {
-                    const folderName = prefix.Prefix?.replace(currentPrefix, "").replace(/\/$/, "");
+                    const folderName = prefix.Prefix?.replace(
+                      currentPrefix,
+                      ""
+                    ).replace(/\/$/, "");
                     return { ...prefix, folderName };
                   })
                   .filter((item) => {
                     // Filter out the current directory itself and empty/invalid names
-                    const isValid = item.folderName && 
-                                   item.folderName.trim().length > 0 && 
-                                   item.Prefix !== currentPrefix && // Don't show current directory as a folder
-                                   !item.folderName.includes('/') && // Only direct child folders
-                                   item.folderName.toLowerCase().includes(searchTerm.toLowerCase());
+                    const isValid =
+                      item.folderName &&
+                      item.folderName.trim().length > 0 &&
+                      item.Prefix !== currentPrefix && // Don't show current directory as a folder
+                      !item.folderName.includes("/") && // Only direct child folders
+                      item.folderName
+                        .toLowerCase()
+                        .includes(searchTerm.toLowerCase());
                     return isValid;
                   })
                   .map((item) => (
@@ -772,8 +980,18 @@ export default function S3Explorer() {
                     >
                       <div className="flex items-center space-x-3">
                         <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
+                          <svg
+                            className="w-6 h-6 text-blue-600"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"
+                            />
                           </svg>
                         </div>
                         <span className="font-medium text-slate-800 truncate">
@@ -786,24 +1004,42 @@ export default function S3Explorer() {
                 {/* Files */}
                 {sortedObjects
                   .filter((o) => {
-                    const fileName = o.Key?.replace(currentPrefix, "").split('/').pop();
-                    return o.Key && !o.Key.endsWith('/') && fileName && fileName.trim().length > 0 && o.Key.toLowerCase().includes(searchTerm.toLowerCase());
+                    const fileName = o.Key?.replace(currentPrefix, "")
+                      .split("/")
+                      .pop();
+                    return (
+                      o.Key &&
+                      !o.Key.endsWith("/") &&
+                      fileName &&
+                      fileName.trim().length > 0 &&
+                      o.Key.toLowerCase().includes(searchTerm.toLowerCase())
+                    );
                   })
                   .map((object) => (
                     <div key={object.Key} className="p-4">
                       <div className="flex items-center space-x-3 mb-3">
                         <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <span className="text-xl" dangerouslySetInnerHTML={{ __html: getFileIcon(object.Key!) }}></span>
+                          <span
+                            className="text-xl"
+                            dangerouslySetInnerHTML={{
+                              __html: getFileIcon(object.Key!),
+                            }}
+                          ></span>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p 
+                          <p
                             className="font-medium text-slate-800 truncate"
                             title={object.Key?.replace(currentPrefix, "")}
                           >
-                            {object.Key?.replace(currentPrefix, "").split('/').pop() || "Unnamed File"}
+                            {object.Key?.replace(currentPrefix, "")
+                              .split("/")
+                              .pop() || "Unnamed File"}
                           </p>
                           <p className="text-sm text-slate-500">
-                            {object.LastModified?.toLocaleDateString()} &middot; {object.Size ? `${(object.Size / 1024).toFixed(1)} KB` : "—"}
+                            {object.LastModified?.toLocaleDateString()} &middot;{" "}
+                            {object.Size
+                              ? `${(object.Size / 1024).toFixed(1)} KB`
+                              : "—"}
                           </p>
                         </div>
                       </div>
@@ -812,8 +1048,18 @@ export default function S3Explorer() {
                           onClick={() => handleDownload(object.Key!)}
                           className="flex items-center space-x-1 px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition-colors duration-200 text-sm"
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                            />
                           </svg>
                           <span>Download</span>
                         </button>
@@ -821,8 +1067,18 @@ export default function S3Explorer() {
                           onClick={() => handleDelete(object.Key!)}
                           className="flex items-center space-x-1 px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors duration-200 text-sm"
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                            />
                           </svg>
                           <span>Delete</span>
                         </button>
@@ -834,7 +1090,9 @@ export default function S3Explorer() {
           </div>
         ) : (
           <div className="text-center py-12">
-            <p className="text-slate-500">Please enter your credentials and select a bucket to begin.</p>
+            <p className="text-slate-500">
+              Please enter your credentials and select a bucket to begin.
+            </p>
           </div>
         )}
       </div>
@@ -842,7 +1100,9 @@ export default function S3Explorer() {
       {isCreateFolderModalOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white/90 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/20 p-6 sm:p-8 w-full max-w-md">
-            <h3 className="text-lg font-semibold text-slate-800 mb-4">Create New Folder</h3>
+            <h3 className="text-lg font-semibold text-slate-800 mb-4">
+              Create New Folder
+            </h3>
             <div className="space-y-4">
               <input
                 type="text"
@@ -850,7 +1110,9 @@ export default function S3Explorer() {
                 onChange={(e) => setNewFolderName(e.target.value)}
                 placeholder="Enter folder name"
                 className="w-full px-4 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-slate-900 placeholder-slate-400"
-                onKeyDown={(e) => e.key === 'Enter' && handleConfirmCreateFolder()}
+                onKeyDown={(e) =>
+                  e.key === "Enter" && handleConfirmCreateFolder()
+                }
               />
               <div className="flex justify-end space-x-4">
                 <button
@@ -877,10 +1139,15 @@ export default function S3Explorer() {
       {isDeleteModalOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white/90 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/20 p-6 sm:p-8 w-full max-w-md">
-            <h3 className="text-lg font-semibold text-slate-800 mb-2">Confirm Deletion</h3>
+            <h3 className="text-lg font-semibold text-slate-800 mb-2">
+              Confirm Deletion
+            </h3>
             <p className="text-slate-600 mb-6">
               Are you sure you want to delete{" "}
-              <span className="font-medium text-red-600 break-all">{itemToDelete?.split("/").pop()}</span>?
+              <span className="font-medium text-red-600 break-all">
+                {itemToDelete?.split("/").pop()}
+              </span>
+              ?
             </p>
             <div className="flex justify-end space-x-4">
               <button
