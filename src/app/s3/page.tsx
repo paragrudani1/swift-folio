@@ -44,6 +44,9 @@ export default function S3Explorer() {
   const [currentlyUploadingFolder, setCurrentlyUploadingFolder] = useState<
     string | null
   >(null);
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
 
   const handleLogout = () => {
     setS3Client(null);
@@ -363,6 +366,62 @@ export default function S3Explorer() {
     } finally {
       setIsDeleteModalOpen(false);
       setItemToDelete(null);
+    }
+  };
+
+  const toggleSelectMode = () => {
+    setIsSelectMode(!isSelectMode);
+    setSelectedItems(new Set());
+  };
+
+  const toggleItemSelection = (key: string) => {
+    const newSelectedItems = new Set(selectedItems);
+    if (newSelectedItems.has(key)) {
+      newSelectedItems.delete(key);
+    } else {
+      newSelectedItems.add(key);
+    }
+    setSelectedItems(newSelectedItems);
+  };
+
+  const selectAllItems = () => {
+    const allKeys = new Set([
+      ...objects.map(obj => obj.Key!),
+      ...prefixes.map(prefix => prefix.Prefix!)
+    ]);
+    setSelectedItems(allKeys);
+  };
+
+  const clearSelection = () => {
+    setSelectedItems(new Set());
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedItems.size === 0) return;
+    setIsBulkDeleteModalOpen(true);
+  };
+
+  const handleConfirmBulkDelete = async () => {
+    if (!s3Client || selectedItems.size === 0) return;
+
+    try {
+      // Delete items one by one (S3 also supports batch delete, but this is simpler)
+      for (const key of selectedItems) {
+        const command = new DeleteObjectCommand({
+          Bucket: selectedBucket!,
+          Key: key,
+        });
+        await s3Client.send(command);
+      }
+      
+      listObjects(selectedBucket!, currentPrefix);
+      setSelectedItems(new Set());
+      setIsSelectMode(false);
+    } catch (error) {
+      console.error('Failed to delete selected items:', error);
+      setError('Failed to delete some items.');
+    } finally {
+      setIsBulkDeleteModalOpen(false);
     }
   };
 
@@ -719,9 +778,58 @@ export default function S3Explorer() {
             {/* Files and Folders Grid */}
             <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 overflow-hidden">
               <div className="p-4 sm:p-6 border-b border-slate-200">
-                <h3 className="text-lg font-semibold text-slate-800">
-                  Files & Folders
-                </h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-slate-800">
+                    Files & Folders
+                  </h3>
+                  <div className="flex items-center space-x-3">
+                    {!isSelectMode ? (
+                      <button
+                        onClick={toggleSelectMode}
+                        className="inline-flex items-center px-3 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                      >
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Select
+                      </button>
+                    ) : (
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm text-slate-600">
+                          {selectedItems.size} selected
+                        </span>
+                        <button
+                          onClick={selectAllItems}
+                          className="px-2 py-1 text-xs text-blue-600 hover:text-blue-800 transition-colors"
+                        >
+                          All
+                        </button>
+                        <button
+                          onClick={clearSelection}
+                          className="px-2 py-1 text-xs text-slate-600 hover:text-slate-800 transition-colors"
+                        >
+                          None
+                        </button>
+                        <button
+                          onClick={handleBulkDelete}
+                          disabled={selectedItems.size === 0}
+                          className="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:bg-red-300 rounded-lg transition-colors"
+                        >
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                          Delete ({selectedItems.size})
+                        </button>
+                        <button
+                          onClick={toggleSelectMode}
+                          className="inline-flex items-center px-3 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* Desktop Table View */}
@@ -729,6 +837,16 @@ export default function S3Explorer() {
                 <table className="w-full">
                   <thead className="bg-slate-50">
                     <tr>
+                      {isSelectMode && (
+                        <th className="w-12 px-4 py-4">
+                          <input
+                            type="checkbox"
+                            checked={selectedItems.size > 0 && selectedItems.size === objects.length + prefixes.length}
+                            onChange={(e) => e.target.checked ? selectAllItems() : clearSelection()}
+                            className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                          />
+                        </th>
+                      )}
                       <th
                         className="px-6 py-4 text-left text-sm font-medium text-slate-600 cursor-pointer hover:text-slate-800 transition-colors"
                         onClick={() => requestSort("Key")}
@@ -822,10 +940,25 @@ export default function S3Explorer() {
                       .map((item) => (
                         <tr
                           key={item.Prefix}
-                          onClick={() => handlePrefixClick(item.Prefix!)}
                           className="cursor-pointer hover:bg-blue-50 transition-colors duration-200"
                         >
-                          <td className="px-6 py-4">
+                          {isSelectMode && (
+                            <td className="w-12 px-4 py-4">
+                              <input
+                                type="checkbox"
+                                checked={selectedItems.has(item.Prefix!)}
+                                onChange={(e) => {
+                                  e.stopPropagation();
+                                  toggleItemSelection(item.Prefix!);
+                                }}
+                                className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                              />
+                            </td>
+                          )}
+                          <td 
+                            className="px-6 py-4"
+                            onClick={() => !isSelectMode && handlePrefixClick(item.Prefix!)}
+                          >
                             <div className="flex items-center space-x-3">
                               <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
                                 <svg
@@ -873,6 +1006,16 @@ export default function S3Explorer() {
                           key={object.Key}
                           className="hover:bg-slate-50 transition-colors duration-200"
                         >
+                          {isSelectMode && (
+                            <td className="w-12 px-4 py-4">
+                              <input
+                                type="checkbox"
+                                checked={selectedItems.has(object.Key!)}
+                                onChange={() => toggleItemSelection(object.Key!)}
+                                className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                              />
+                            </td>
+                          )}
                           <td className="px-6 py-4">
                             <div className="flex items-center space-x-3">
                               <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
@@ -975,11 +1118,24 @@ export default function S3Explorer() {
                   .map((item) => (
                     <div
                       key={item.Prefix}
-                      onClick={() => handlePrefixClick(item.Prefix!)}
                       className="p-4 cursor-pointer hover:bg-blue-50 transition-colors duration-200"
                     >
                       <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                        {isSelectMode && (
+                          <input
+                            type="checkbox"
+                            checked={selectedItems.has(item.Prefix!)}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              toggleItemSelection(item.Prefix!);
+                            }}
+                            className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 flex-shrink-0"
+                          />
+                        )}
+                        <div 
+                          className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0"
+                          onClick={() => !isSelectMode && handlePrefixClick(item.Prefix!)}
+                        >
                           <svg
                             className="w-6 h-6 text-blue-600"
                             fill="none"
@@ -994,7 +1150,10 @@ export default function S3Explorer() {
                             />
                           </svg>
                         </div>
-                        <span className="font-medium text-slate-800 truncate">
+                        <span 
+                          className="font-medium text-slate-800 truncate"
+                          onClick={() => !isSelectMode && handlePrefixClick(item.Prefix!)}
+                        >
                           {item.folderName || "Unnamed Folder"}
                         </span>
                       </div>
@@ -1018,6 +1177,14 @@ export default function S3Explorer() {
                   .map((object) => (
                     <div key={object.Key} className="p-4">
                       <div className="flex items-center space-x-3 mb-3">
+                        {isSelectMode && (
+                          <input
+                            type="checkbox"
+                            checked={selectedItems.has(object.Key!)}
+                            onChange={() => toggleItemSelection(object.Key!)}
+                            className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 flex-shrink-0"
+                          />
+                        )}
                         <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
                           <span
                             className="text-xl"
@@ -1164,6 +1331,37 @@ export default function S3Explorer() {
                 className="px-4 py-2 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-lg hover:from-red-700 hover:to-rose-700 transition-all duration-200 shadow-lg hover:shadow-xl"
               >
                 Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isBulkDeleteModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white/90 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/20 p-6 sm:p-8 w-full max-w-md">
+            <h3 className="text-lg font-semibold text-slate-800 mb-2">
+              Confirm Bulk Deletion
+            </h3>
+            <p className="text-slate-600 mb-6">
+              Are you sure you want to delete{" "}
+              <span className="font-medium text-red-600">
+                {selectedItems.size} item{selectedItems.size !== 1 ? 's' : ''}
+              </span>
+              ? This action cannot be undone.
+            </p>
+            <div className="flex justify-end space-x-4">
+              <button
+                onClick={() => setIsBulkDeleteModalOpen(false)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors duration-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmBulkDelete}
+                className="px-4 py-2 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-lg hover:from-red-700 hover:to-rose-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+              >
+                Delete {selectedItems.size} Item{selectedItems.size !== 1 ? 's' : ''}
               </button>
             </div>
           </div>
