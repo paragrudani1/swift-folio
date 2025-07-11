@@ -37,6 +37,10 @@ export default function S3Explorer() {
   const [searchTerm, setSearchTerm] = useState("");
   const [storageUsage, setStorageUsage] = useState<number | null>(null);
   const [loadingStorageUsage, setLoadingStorageUsage] = useState(false);
+  const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<string | null>(null);
 
   const handleLogout = () => {
     setS3Client(null);
@@ -313,40 +317,50 @@ export default function S3Explorer() {
     }
   };
 
-  const handleDelete = async (key: string) => {
+  const handleDelete = (key: string) => {
     if (!s3Client) return;
+    setItemToDelete(key);
+    setIsDeleteModalOpen(true);
+  };
 
-    if (window.confirm(`Are you sure you want to delete ${key}?`)) {
-      try {
-        const command = new DeleteObjectCommand({
-          Bucket: selectedBucket!,
-          Key: key,
-        });
-        await s3Client.send(command);
-        listObjects(selectedBucket!, currentPrefix);
-      } catch (error) {
-        console.error(`Failed to delete ${key}:`, error);
-        setError(`Failed to delete ${key}.`);
-      }
+  const handleConfirmDelete = async () => {
+    if (!s3Client || !itemToDelete) return;
+
+    try {
+      const command = new DeleteObjectCommand({
+        Bucket: selectedBucket!,
+        Key: itemToDelete,
+      });
+      await s3Client.send(command);
+      listObjects(selectedBucket!, currentPrefix);
+    } catch (error) {
+      console.error(`Failed to delete ${itemToDelete}:`, error);
+      setError(`Failed to delete ${itemToDelete}.`);
+    } finally {
+      setIsDeleteModalOpen(false);
+      setItemToDelete(null);
     }
   };
 
-  const handleCreateFolder = async () => {
-    if (!s3Client) return;
+  const handleCreateFolderClick = () => {
+    setIsCreateFolderModalOpen(true);
+  };
 
-    const folderName = prompt("Enter folder name:");
-    if (folderName) {
-      try {
-        const command = new PutObjectCommand({
-          Bucket: selectedBucket!,
-          Key: `${currentPrefix}${folderName}/`,
-        });
-        await s3Client.send(command);
-        listObjects(selectedBucket!, currentPrefix);
-      } catch (error) {
-        console.error(`Failed to create folder ${folderName}:`, error);
-        setError(`Failed to create folder ${folderName}.`);
-      }
+  const handleConfirmCreateFolder = async () => {
+    if (!s3Client || !newFolderName) return;
+
+    try {
+      const command = new PutObjectCommand({
+        Bucket: selectedBucket!,
+        Key: `${currentPrefix}${newFolderName}/`,
+      });
+      await s3Client.send(command);
+      listObjects(selectedBucket!, currentPrefix);
+      setNewFolderName(""); // Reset input
+      setIsCreateFolderModalOpen(false); // Close modal
+    } catch (error) {
+      console.error(`Failed to create folder ${newFolderName}:`, error);
+      setError(`Failed to create folder ${newFolderName}.`);
     }
   };
 
@@ -548,7 +562,7 @@ export default function S3Explorer() {
                   </div>
 
                   <button
-                    onClick={handleCreateFolder}
+                    onClick={handleCreateFolderClick}
                     className="flex items-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl text-sm whitespace-nowrap"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -819,14 +833,75 @@ export default function S3Explorer() {
             </div>
           </div>
         ) : (
-          <div className="flex items-center justify-center min-h-[70vh]">
-            <p className="text-slate-500 text-sm">
-              {/* eslint-disable-next-line react/no-unescaped-entities */}
-              You're connected to AWS S3! Now you can manage your files and folders.
-            </p>
+          <div className="text-center py-12">
+            <p className="text-slate-500">Please enter your credentials and select a bucket to begin.</p>
           </div>
         )}
       </div>
+
+      {isCreateFolderModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white/90 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/20 p-6 sm:p-8 w-full max-w-md">
+            <h3 className="text-lg font-semibold text-slate-800 mb-4">Create New Folder</h3>
+            <div className="space-y-4">
+              <input
+                type="text"
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                placeholder="Enter folder name"
+                className="w-full px-4 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-slate-900 placeholder-slate-400"
+                onKeyDown={(e) => e.key === 'Enter' && handleConfirmCreateFolder()}
+              />
+              <div className="flex justify-end space-x-4">
+                <button
+                  onClick={() => {
+                    setIsCreateFolderModalOpen(false);
+                    setNewFolderName("");
+                  }}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors duration-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmCreateFolder}
+                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+                >
+                  Create
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white/90 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/20 p-6 sm:p-8 w-full max-w-md">
+            <h3 className="text-lg font-semibold text-slate-800 mb-2">Confirm Deletion</h3>
+            <p className="text-slate-600 mb-6">
+              Are you sure you want to delete{" "}
+              <span className="font-medium text-red-600 break-all">{itemToDelete?.split("/").pop()}</span>?
+            </p>
+            <div className="flex justify-end space-x-4">
+              <button
+                onClick={() => {
+                  setIsDeleteModalOpen(false);
+                  setItemToDelete(null);
+                }}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors duration-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                className="px-4 py-2 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-lg hover:from-red-700 hover:to-rose-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
