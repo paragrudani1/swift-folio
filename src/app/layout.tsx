@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -24,10 +25,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <nav className="bg-gray-800 text-white p-4">
+          <div className="container mx-auto flex justify-between">
+            <Link href="/" className="font-bold">
+              SwiftFolio
+            </Link>
+            <Link href="/s3">S3 Explorer</Link>
+          </div>
+        </nav>
+        <main>{children}</main>
       </body>
     </html>
   );
