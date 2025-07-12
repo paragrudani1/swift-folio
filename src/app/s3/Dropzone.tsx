@@ -147,10 +147,13 @@ export function Dropzone({
             }}
           >
             <svg
-              className="w-6 h-6 sm:w-8 sm:h-8 text-white"
+              className="w-6 h-6 sm:w-8 sm:h-8"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
+              style={{
+                color: isDragActive ? 'white' : token('color', 'primaryText')
+              }}
             >
               <path
                 strokeLinecap="round"
@@ -165,7 +168,7 @@ export function Dropzone({
             <h3
               className="text-base sm:text-lg font-semibold mb-1 sm:mb-2 transition-colors duration-300"
               style={{
-                color: isDragActive ? '#1e40af' : token('color', 'primaryText')
+                color: isDragActive ? 'white' : token('color', 'primaryText')
               }}
             >
               {isDragActive ? "Drop your files here!" : "Upload Files"}
@@ -173,7 +176,7 @@ export function Dropzone({
             <p
               className="text-xs sm:text-sm transition-colors duration-300"
               style={{
-                color: isDragActive ? '#2563eb' : token('color', 'secondaryText')
+                color: isDragActive ? token('color', 'primaryBg') : token('color', 'secondaryText')
               }}
             >
               {isDragActive

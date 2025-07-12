@@ -55,7 +55,14 @@ export function FileExplorerToolbar({
               </span>
               <button
                 onClick={onSelectAll}
-                className="px-2 py-1 text-xs text-blue-600 hover:text-blue-800 transition-colors"
+                className="px-2 py-1 text-xs transition-colors"
+                style={{ color: token('color', 'focusBorder') }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = token('color', 'primaryText');
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = token('color', 'focusBorder');
+                }}
               >
                 All
               </button>
