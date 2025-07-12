@@ -273,6 +273,53 @@ export const useS3Operations = () => {
     }
   }, []);
 
+  /**
+   * Delete folder and all its contents from S3
+   */
+  const deleteFolder = useCallback(async (
+    s3Client: S3Client,
+    bucketName: string,
+    folderPrefix: string
+  ): Promise<void> => {
+    if (!s3Client) {
+      throw new Error("S3 client not initialized");
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // First, list all objects in the folder
+      const listCommand = new ListObjectsV2Command({
+        Bucket: bucketName,
+        Prefix: folderPrefix,
+      });
+      
+      const response = await s3Client.send(listCommand);
+      const objectsToDelete = response.Contents || [];
+
+      if (objectsToDelete.length > 0) {
+        // Delete all objects in the folder
+        const deletePromises = objectsToDelete.map(async (obj) => {
+          const command = new DeleteObjectCommand({
+            Bucket: bucketName,
+            Key: obj.Key!,
+          });
+          return s3Client.send(command);
+        });
+
+        await Promise.all(deletePromises);
+      }
+    } catch (err) {
+      const errorMessage = `Failed to delete folder ${folderPrefix}`;
+      setError(errorMessage);
+      console.error(errorMessage, err);
+      throw new Error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   return {
     isLoading,
     error,
@@ -281,6 +328,7 @@ export const useS3Operations = () => {
     downloadFile,
     deleteFile,
     deleteMultipleFiles,
+    deleteFolder,
     createFolder,
     getBucketStorageUsage,
     setError,

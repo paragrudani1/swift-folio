@@ -30,7 +30,9 @@ export function DeleteModal({
           Confirm Deletion
         </h3>
         <div className="mb-6" style={{ color: token('color', 'secondaryText') }}>
-          <p className="mb-3">Are you sure you want to delete:</p>
+          <p className="mb-3">
+            Are you sure you want to delete this {itemToDelete?.endsWith('/') ? 'folder and all its contents' : 'file'}:
+          </p>
           <div 
             className="p-3 rounded-lg break-all text-sm font-mono max-h-20 overflow-y-auto"
             style={{ 
@@ -41,7 +43,12 @@ export function DeleteModal({
           >
             {itemToDelete}
           </div>
-          <p className="mt-3 text-sm">This action cannot be undone.</p>
+          <p className="mt-3 text-sm">
+            {itemToDelete?.endsWith('/') 
+              ? 'This will permanently delete the folder and all files within it. This action cannot be undone.'
+              : 'This action cannot be undone.'
+            }
+          </p>
         </div>
         <div className="flex justify-end space-x-4">
           <button

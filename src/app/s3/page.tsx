@@ -104,6 +104,7 @@ export default function S3Explorer() {
     downloadFile,
     deleteFile,
     deleteMultipleFiles,
+    deleteFolder,
     createFolder,
     getBucketStorageUsage,
   } = useS3Operations();
@@ -169,7 +170,12 @@ export default function S3Explorer() {
     if (!s3Client || !selectedBucket || !itemToDelete) return;
 
     try {
-      await deleteFile(s3Client, selectedBucket, itemToDelete);
+      // Check if it's a folder (ends with /)
+      if (itemToDelete.endsWith('/')) {
+        await deleteFolder(s3Client, selectedBucket, itemToDelete);
+      } else {
+        await deleteFile(s3Client, selectedBucket, itemToDelete);
+      }
       
       // Refresh the list
       const { objects: newObjects, prefixes: newPrefixes } = await listObjects(
@@ -179,6 +185,18 @@ export default function S3Explorer() {
       );
       setObjects(newObjects);
       setPrefixes(newPrefixes);
+      
+      // Clear selection state if the deleted item was selected
+      if (selectedItems.has(itemToDelete)) {
+        const newSelection = new Set(selectedItems);
+        newSelection.delete(itemToDelete);
+        clearSelection();
+      }
+      
+      // If no items remain selected, exit select mode
+      if (selectedItems.size <= 1 && selectedItems.has(itemToDelete)) {
+        toggleSelectMode();
+      }
       
       closeDeleteModal();
     } catch (err) {
@@ -192,7 +210,20 @@ export default function S3Explorer() {
 
     try {
       const itemsToDelete = Array.from(selectedItems);
-      await deleteMultipleFiles(s3Client, selectedBucket, itemsToDelete);
+      
+      // Separate files and folders
+      const files = itemsToDelete.filter(item => !item.endsWith('/'));
+      const folders = itemsToDelete.filter(item => item.endsWith('/'));
+      
+      // Delete files
+      if (files.length > 0) {
+        await deleteMultipleFiles(s3Client, selectedBucket, files);
+      }
+      
+      // Delete folders one by one
+      for (const folder of folders) {
+        await deleteFolder(s3Client, selectedBucket, folder);
+      }
       
       // Refresh the list
       const { objects: newObjects, prefixes: newPrefixes } = await listObjects(
@@ -203,7 +234,14 @@ export default function S3Explorer() {
       setObjects(newObjects);
       setPrefixes(newPrefixes);
       
+      // Clear all selection state
       clearSelection();
+      
+      // Exit select mode since all selected items are deleted
+      if (isSelectMode) {
+        toggleSelectMode();
+      }
+      
       closeBulkDeleteModal();
     } catch (err) {
       console.error("Bulk delete failed:", err);
