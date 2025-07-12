@@ -12,10 +12,13 @@ import {
 } from "@aws-sdk/client-s3";
 import CryptoJS from "crypto-js";
 import { Dropzone } from "./Dropzone";
+import { ThemeToggle } from "../components/ThemeToggle";
+import { useTheme } from "../contexts/ThemeContext";
 
 const ENCRYPTION_KEY = "your-super-secret-key"; // In a real app, manage this securely!
 
 export default function S3Explorer() {
+  const { token } = useTheme();
   const [error, setError] = useState<string | null>(null);
   const [credentials, setCredentials] = useState({
     accessKeyId: "",
@@ -461,9 +464,12 @@ export default function S3Explorer() {
   ]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+<div className="min-h-screen" style={{ backgroundColor: token('color', 'primaryBg') }}>
       {/* Header */}
-      <div className="bg-white/80 backdrop-blur-sm border-b border-slate-200 sticky top-0 z-10">
+      <div className="sticky top-0 z-10 backdrop-blur-sm border-b" style={{ 
+        backgroundColor: token('color', 'glassBg'), 
+        borderColor: token('color', 'primaryBorder') 
+      }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center space-x-3">
@@ -489,17 +495,21 @@ export default function S3Explorer() {
                 </svg>
               </div>
               <div>
-                <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+                <h1 className="text-xl sm:text-2xl font-bold" style={{ color: token('color', 'primaryText') }}>
                   Swift S3 Explorer
                 </h1>
-                <p className="text-xs sm:text-sm text-slate-500 hidden sm:block">
+                <p className="text-xs sm:text-sm hidden sm:block" style={{ color: token('color', 'mutedText') }}>
                   Manage your AWS S3 buckets with ease
                 </p>
               </div>
             </div>
             {s3Client && selectedBucket && (
               <div className="flex items-center space-x-2 sm:space-x-4">
-                <div className="text-xs sm:text-sm text-slate-600 bg-white/60 px-3 sm:px-4 py-2 rounded-lg border border-slate-200">
+                <div className="text-xs sm:text-sm px-3 sm:px-4 py-2 rounded-lg border" style={{ 
+                  color: token('color', 'secondaryText'), 
+                  backgroundColor: token('color', 'overlayBg'), 
+                  borderColor: token('color', 'primaryBorder') 
+                }}>
                   <span className="font-medium">Storage:</span>{" "}
                   {loadingStorageUsage ? (
                     <span className="animate-pulse">Loading...</span>
@@ -511,9 +521,21 @@ export default function S3Explorer() {
                     "N/A"
                   )}
                 </div>
-                <button
+                <ThemeToggle />
+<button
                   onClick={handleLogout}
-                  className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors duration-200 text-sm"
+                  className="flex items-center space-x-2 px-3 sm:px-4 py-2 border rounded-lg transition-colors duration-200 text-sm hover:scale-105 transform"
+                  style={{ 
+                    backgroundColor: token('color', 'overlayBg'), 
+                    color: token('color', 'primaryText'), 
+                    borderColor: token('color', 'primaryBorder') 
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = token('color', 'hoverStrongBg');
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = token('color', 'overlayBg');
+                  }}
                   title="Logout"
                 >
                   <svg
@@ -542,7 +564,11 @@ export default function S3Explorer() {
           /* Login Form */
           <div className="flex items-center justify-center min-h-[70vh] px-4">
             <div className="w-full max-w-md">
-              <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-2xl border border-white/20 p-6 sm:p-8">
+              <div className="backdrop-blur-sm rounded-2xl border p-6 sm:p-8" style={{ 
+                backgroundColor: token('color', 'glassBg'), 
+                boxShadow: token('shadow', '2xl'), 
+                borderColor: token('color', 'primaryBorder') 
+              }}>
                 <div className="text-center mb-6 sm:mb-8">
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
                     <svg
@@ -559,17 +585,20 @@ export default function S3Explorer() {
                       />
                     </svg>
                   </div>
-                  <h2 className="text-xl sm:text-2xl font-bold text-slate-800 mb-2">
+                  <h2 className="text-xl sm:text-2xl font-bold mb-2" style={{ color: token('color', 'primaryText') }}>
                     Connect to AWS S3
                   </h2>
-                  <p className="text-sm sm:text-base text-slate-600">
+                  <p className="text-sm sm:text-base" style={{ color: token('color', 'secondaryText') }}>
                     Enter your credentials to get started
                   </p>
+                  <div className="flex justify-center mt-4">
+                    <ThemeToggle />
+                  </div>
                 </div>
 
                 <div className="space-y-4 sm:space-y-6">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-700">
+                    <label className="text-sm font-medium" style={{ color: token('color', 'secondaryText') }}>
                       Access Key ID
                     </label>
                     <input
@@ -578,12 +607,17 @@ export default function S3Explorer() {
                       placeholder="AKIA..."
                       value={credentials.accessKeyId}
                       onChange={handleCredentialChange}
-                      className="w-full px-4 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-slate-900 placeholder-slate-400"
+                      className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                      style={{ 
+                        backgroundColor: token('color', 'glassBg'), 
+                        borderColor: token('color', 'primaryBorder'), 
+                        color: token('color', 'primaryText') 
+                      }}
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-700">
+                    <label className="text-sm font-medium" style={{ color: token('color', 'secondaryText') }}>
                       Secret Access Key
                     </label>
                     <input
@@ -592,12 +626,17 @@ export default function S3Explorer() {
                       placeholder="••••••••••••••••••••••••••••••••••••••••"
                       value={credentials.secretAccessKey}
                       onChange={handleCredentialChange}
-                      className="w-full px-4 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-slate-900 placeholder-slate-400"
+                      className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                      style={{ 
+                        backgroundColor: token('color', 'glassBg'), 
+                        borderColor: token('color', 'primaryBorder'), 
+                        color: token('color', 'primaryText') 
+                      }}
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-700">
+                    <label className="text-sm font-medium" style={{ color: token('color', 'secondaryText') }}>
                       Bucket Name (Optional)
                     </label>
                     <input
@@ -606,12 +645,17 @@ export default function S3Explorer() {
                       placeholder="my-s3-bucket"
                       value={bucketNameInput}
                       onChange={(e) => setBucketNameInput(e.target.value)}
-                      className="w-full px-4 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-slate-900 placeholder-slate-400"
+                      className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                      style={{ 
+                        backgroundColor: token('color', 'glassBg'), 
+                        borderColor: token('color', 'primaryBorder'), 
+                        color: token('color', 'primaryText') 
+                      }}
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-700">
+                    <label className="text-sm font-medium" style={{ color: token('color', 'secondaryText') }}>
                       AWS Region
                     </label>
                     <input
@@ -620,7 +664,12 @@ export default function S3Explorer() {
                       placeholder="us-east-1"
                       value={regionInput}
                       onChange={(e) => setRegionInput(e.target.value)}
-                      className="w-full px-4 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-slate-900 placeholder-slate-400"
+                      className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                      style={{ 
+                        backgroundColor: token('color', 'glassBg'), 
+                        borderColor: token('color', 'primaryBorder'), 
+                        color: token('color', 'primaryText') 
+                      }}
                     />
                   </div>
 
@@ -630,11 +679,16 @@ export default function S3Explorer() {
                       id="saveCredentials"
                       checked={saveCredentials}
                       onChange={(e) => setSaveCredentials(e.target.checked)}
-                      className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                      style={{ 
+                        backgroundColor: token('color', 'secondaryBg'), 
+                        borderColor: token('color', 'primaryBorder') 
+                      }}
                     />
                     <label
                       htmlFor="saveCredentials"
-                      className="text-sm font-medium text-slate-700"
+                      className="text-sm font-medium"
+                      style={{ color: token('color', 'secondaryText') }}
                     >
                       Remember my credentials securely
                     </label>
@@ -642,13 +696,23 @@ export default function S3Explorer() {
 
                   <button
                     onClick={handleLogin}
-                    className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-6 rounded-xl font-medium hover:from-blue-700 hover:to-indigo-700 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl"
+                    className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-6 rounded-xl font-medium hover:from-blue-700 hover:to-indigo-700 transform hover:scale-105 transition-all duration-200"
+                    style={{ boxShadow: token('shadow', 'lg') }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.boxShadow = token('shadow', 'xl');
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.boxShadow = token('shadow', 'lg');
+                    }}
                   >
                     Connect to S3
                   </button>
 
                   {error && (
-                    <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                    <div className="border rounded-xl p-4" style={{ 
+                      backgroundColor: token('color', 'tertiaryBg'), 
+                      borderColor: '#ef4444' 
+                    }}>
                       <p className="text-red-600 text-sm">{error}</p>
                     </div>
                   )}
@@ -660,7 +724,11 @@ export default function S3Explorer() {
           /* Main Explorer Interface */
           <div className="space-y-6">
             {/* Breadcrumb and Actions */}
-            <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 p-4 sm:p-6">
+            <div className="backdrop-blur-sm rounded-2xl border p-4 sm:p-6" style={{ 
+              backgroundColor: token('color', 'glassBg'), 
+              boxShadow: token('shadow', 'lg'), 
+              borderColor: token('color', 'primaryBorder') 
+            }}>
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-center space-x-2 text-sm overflow-x-auto w-full sm:w-auto">
                   <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-lg font-medium whitespace-nowrap">
@@ -668,8 +736,11 @@ export default function S3Explorer() {
                   </span>
                   {currentPrefix && (
                     <>
-                      <span className="text-slate-400">/</span>
-                      <span className="px-3 py-1 bg-slate-100 text-slate-700 rounded-lg whitespace-nowrap">
+                      <span style={{ color: token('color', 'mutedText') }}>/</span>
+                      <span className="px-3 py-1 rounded-lg whitespace-nowrap" style={{ 
+                        backgroundColor: token('color', 'secondaryBg'), 
+                        color: token('color', 'primaryText') 
+                      }}>
                         {currentPrefix}
                       </span>
                     </>
@@ -680,7 +751,17 @@ export default function S3Explorer() {
                   {currentPrefix && (
                     <button
                       onClick={handleBackClick}
-                      className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors duration-200 text-sm"
+                      className="flex items-center space-x-2 px-3 sm:px-4 py-2 rounded-lg transition-colors duration-200 text-sm"
+                      style={{ 
+                        backgroundColor: token('color', 'overlayBg'), 
+                        color: token('color', 'secondaryText') 
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = token('color', 'hoverBg');
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = token('color', 'overlayBg');
+                      }}
                     >
                       <svg
                         className="w-4 h-4"
@@ -703,15 +784,21 @@ export default function S3Explorer() {
                     <input
                       type="text"
                       placeholder="Search..."
-                      className="pl-8 sm:pl-10 pr-3 sm:pr-4 py-2 bg-white/70 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-sm w-full sm:w-auto text-slate-900 placeholder-slate-400"
+                      className="pl-8 sm:pl-10 pr-3 sm:pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-sm w-full sm:w-auto"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
+                      style={{ 
+                        backgroundColor: token('color', 'overlayBg'), 
+                        borderColor: token('color', 'primaryBorder'), 
+                        color: token('color', 'primaryText') 
+                      }}
                     />
                     <svg
-                      className="w-4 h-4 text-slate-400 absolute left-2 sm:left-3 top-3"
+                      className="w-4 h-4 absolute left-2 sm:left-3 top-3"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
+                      style={{ color: token('color', 'tertiaryText') }}
                     >
                       <path
                         strokeLinecap="round"
@@ -724,7 +811,14 @@ export default function S3Explorer() {
 
                   <button
                     onClick={handleCreateFolderClick}
-                    className="flex items-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl text-sm whitespace-nowrap"
+                    className="flex items-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-200 text-sm whitespace-nowrap"
+                    style={{ boxShadow: token('shadow', 'lg') }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.boxShadow = token('shadow', 'xl');
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.boxShadow = token('shadow', 'lg');
+                    }}
                   >
                     <svg
                       className="w-4 h-4"
@@ -747,7 +841,11 @@ export default function S3Explorer() {
             </div>
 
             {/* Upload Area */}
-            <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 p-4 sm:p-6">
+            <div className="backdrop-blur-sm rounded-2xl border p-4 sm:p-6" style={{ 
+              backgroundColor: token('color', 'overlayBg'), 
+              boxShadow: token('shadow', 'lg'), 
+              borderColor: token('color', 'primaryBorder') 
+            }}>
               <Dropzone
                 s3Client={s3Client}
                 bucketName={selectedBucket}
@@ -757,7 +855,7 @@ export default function S3Explorer() {
               />
               {uploadProgress !== null && (
                 <div className="mt-4">
-                  <div className="flex justify-between text-sm text-slate-600 mb-2">
+                  <div className="flex justify-between text-sm mb-2" style={{ color: token('color', 'secondaryText') }}>
                     <span>
                       {currentlyUploadingFolder
                         ? `Uploading folder: ${currentlyUploadingFolder}`
@@ -765,7 +863,7 @@ export default function S3Explorer() {
                     </span>
                     <span>{uploadProgress}%</span>
                   </div>
-                  <div className="w-full bg-slate-200 rounded-full h-2">
+                  <div className="w-full rounded-full h-2" style={{ backgroundColor: token('color', 'secondaryBg') }}>
                     <div
                       className="bg-gradient-to-r from-blue-600 to-indigo-600 h-2 rounded-full transition-all duration-300"
                       style={{ width: `${uploadProgress}%` }}
@@ -776,17 +874,31 @@ export default function S3Explorer() {
             </div>
 
             {/* Files and Folders Grid */}
-            <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 overflow-hidden">
-              <div className="p-4 sm:p-6 border-b border-slate-200">
+            <div className="backdrop-blur-sm rounded-2xl border overflow-hidden" style={{ 
+              backgroundColor: token('color', 'overlayBg'), 
+              boxShadow: token('shadow', 'lg'), 
+              borderColor: token('color', 'primaryBorder') 
+            }}>
+              <div className="p-4 sm:p-6 border-b" style={{ borderColor: token('color', 'primaryBorder') }}>
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-slate-800">
+                  <h3 className="text-lg font-semibold" style={{ color: token('color', 'primaryText') }}>
                     Files & Folders
                   </h3>
                   <div className="flex items-center space-x-3">
                     {!isSelectMode ? (
                       <button
                         onClick={toggleSelectMode}
-                        className="inline-flex items-center px-3 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                        className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors"
+                        style={{ 
+                          color: token('color', 'secondaryText'), 
+                          backgroundColor: token('color', 'secondaryBg') 
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = token('color', 'hoverBg');
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = token('color', 'secondaryBg');
+                        }}
                       >
                         <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -795,7 +907,7 @@ export default function S3Explorer() {
                       </button>
                     ) : (
                       <div className="flex items-center space-x-2">
-                        <span className="text-sm text-slate-600">
+                        <span className="text-sm" style={{ color: token('color', 'secondaryText') }}>
                           {selectedItems.size} selected
                         </span>
                         <button
@@ -806,7 +918,14 @@ export default function S3Explorer() {
                         </button>
                         <button
                           onClick={clearSelection}
-                          className="px-2 py-1 text-xs text-slate-600 hover:text-slate-800 transition-colors"
+                          className="px-2 py-1 text-xs transition-colors"
+                          style={{ color: token('color', 'secondaryText') }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.color = token('color', 'primaryText');
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.color = token('color', 'secondaryText');
+                          }}
                         >
                           None
                         </button>
@@ -822,7 +941,17 @@ export default function S3Explorer() {
                         </button>
                         <button
                           onClick={toggleSelectMode}
-                          className="inline-flex items-center px-3 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                          className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors"
+                          style={{ 
+                            color: token('color', 'secondaryText'), 
+                            backgroundColor: token('color', 'secondaryBg') 
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = token('color', 'hoverBg');
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = token('color', 'secondaryBg');
+                          }}
                         >
                           Cancel
                         </button>
@@ -835,7 +964,7 @@ export default function S3Explorer() {
               {/* Desktop Table View */}
               <div className="hidden sm:block overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-slate-50">
+                  <thead style={{ backgroundColor: token('color', 'secondaryBg') }}>
                     <tr>
                       {isSelectMode && (
                         <th className="w-12 px-4 py-4">
@@ -843,13 +972,24 @@ export default function S3Explorer() {
                             type="checkbox"
                             checked={selectedItems.size > 0 && selectedItems.size === objects.length + prefixes.length}
                             onChange={(e) => e.target.checked ? selectAllItems() : clearSelection()}
-                            className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                            style={{ 
+                              backgroundColor: token('color', 'primaryBg'), 
+                              borderColor: token('color', 'primaryBorder') 
+                            }}
                           />
                         </th>
                       )}
                       <th
-                        className="px-6 py-4 text-left text-sm font-medium text-slate-600 cursor-pointer hover:text-slate-800 transition-colors"
+                        className="px-6 py-4 text-left text-sm font-medium cursor-pointer transition-colors"
                         onClick={() => requestSort("Key")}
+                        style={{ color: token('color', 'secondaryText') }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.color = token('color', 'primaryText');
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.color = token('color', 'secondaryText');
+                        }}
                       >
                         <div className="flex items-center space-x-2">
                           <span>Name</span>
@@ -869,8 +1009,15 @@ export default function S3Explorer() {
                         </div>
                       </th>
                       <th
-                        className="px-6 py-4 text-left text-sm font-medium text-slate-600 cursor-pointer hover:text-slate-800 transition-colors"
+                        className="px-6 py-4 text-left text-sm font-medium cursor-pointer transition-colors"
                         onClick={() => requestSort("LastModified")}
+                        style={{ color: token('color', 'secondaryText') }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.color = token('color', 'primaryText');
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.color = token('color', 'secondaryText');
+                        }}
                       >
                         <div className="flex items-center space-x-2">
                           <span>Modified</span>
@@ -890,8 +1037,15 @@ export default function S3Explorer() {
                         </div>
                       </th>
                       <th
-                        className="px-6 py-4 text-left text-sm font-medium text-slate-600 cursor-pointer hover:text-slate-800 transition-colors"
+                        className="px-6 py-4 text-left text-sm font-medium cursor-pointer transition-colors"
                         onClick={() => requestSort("Size")}
+                        style={{ color: token('color', 'secondaryText') }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.color = token('color', 'primaryText');
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.color = token('color', 'secondaryText');
+                        }}
                       >
                         <div className="flex items-center space-x-2">
                           <span>Size</span>
@@ -910,12 +1064,12 @@ export default function S3Explorer() {
                           </svg>
                         </div>
                       </th>
-                      <th className="px-6 py-4 text-left text-sm font-medium text-slate-600">
+                      <th className="px-6 py-4 text-left text-sm font-medium" style={{ color: token('color', 'secondaryText') }}>
                         Actions
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-200">
+                  <tbody style={{ borderColor: token('color', 'primaryBorder') }} className="divide-y">{/* Note: we'll add divide-color style inline for each row */}
                     {/* Folders */}
                     {prefixes
                       .map((prefix) => {
@@ -940,19 +1094,29 @@ export default function S3Explorer() {
                       .map((item) => (
                         <tr
                           key={item.Prefix}
-                          className="cursor-pointer hover:bg-blue-50 transition-colors duration-200"
+                          className="cursor-pointer transition-colors duration-200"
+                          style={{ borderBottomColor: token('color', 'primaryBorder') }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = token('color', 'hoverBg');
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                          }}
                         >
                           {isSelectMode && (
-                            <td className="w-12 px-4 py-4">
-                              <input
-                                type="checkbox"
-                                checked={selectedItems.has(item.Prefix!)}
-                                onChange={(e) => {
-                                  e.stopPropagation();
-                                  toggleItemSelection(item.Prefix!);
-                                }}
-                                className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
-                              />
+                            <td className="w-12 px-4 py-4">                            <input
+                              type="checkbox"
+                              checked={selectedItems.has(item.Prefix!)}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                toggleItemSelection(item.Prefix!);
+                              }}
+                              className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                              style={{ 
+                                backgroundColor: token('color', 'primaryBg'), 
+                                borderColor: token('color', 'primaryBorder') 
+                              }}
+                            />
                             </td>
                           )}
                           <td 
@@ -975,14 +1139,14 @@ export default function S3Explorer() {
                                   />
                                 </svg>
                               </div>
-                              <span className="font-medium text-slate-800">
+                              <span className="font-medium" style={{ color: token('color', 'primaryText') }}>
                                 {item.folderName || "Unnamed Folder"}
                               </span>
                             </div>
                           </td>
-                          <td className="px-6 py-4 text-slate-500">—</td>
-                          <td className="px-6 py-4 text-slate-500">—</td>
-                          <td className="px-6 py-4 text-slate-500">—</td>
+                          <td className="px-6 py-4" style={{ color: token('color', 'mutedText') }}>—</td>
+                          <td className="px-6 py-4" style={{ color: token('color', 'mutedText') }}>—</td>
+                          <td className="px-6 py-4" style={{ color: token('color', 'mutedText') }}>—</td>
                         </tr>
                       ))}
 
@@ -1004,21 +1168,31 @@ export default function S3Explorer() {
                       .map((object) => (
                         <tr
                           key={object.Key}
-                          className="hover:bg-slate-50 transition-colors duration-200"
+                          className="transition-colors duration-200"
+                          style={{ borderBottomColor: token('color', 'primaryBorder') }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = token('color', 'hoverBg');
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                          }}
                         >
                           {isSelectMode && (
-                            <td className="w-12 px-4 py-4">
-                              <input
-                                type="checkbox"
-                                checked={selectedItems.has(object.Key!)}
-                                onChange={() => toggleItemSelection(object.Key!)}
-                                className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
-                              />
+                            <td className="w-12 px-4 py-4">                            <input
+                              type="checkbox"
+                              checked={selectedItems.has(object.Key!)}
+                              onChange={() => toggleItemSelection(object.Key!)}
+                              className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                              style={{ 
+                                backgroundColor: token('color', 'primaryBg'), 
+                                borderColor: token('color', 'primaryBorder') 
+                              }}
+                            />
                             </td>
                           )}
                           <td className="px-6 py-4">
                             <div className="flex items-center space-x-3">
-                              <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
+                              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: token('color', 'secondaryBg') }}>
                                 <span
                                   className="text-lg"
                                   dangerouslySetInnerHTML={{
@@ -1027,8 +1201,9 @@ export default function S3Explorer() {
                                 ></span>
                               </div>
                               <span
-                                className="font-medium text-slate-800 truncate max-w-xs cursor-help"
+                                className="font-medium truncate max-w-xs cursor-help"
                                 title={object.Key?.replace(currentPrefix, "")}
+                                style={{ color: token('color', 'primaryText') }}
                               >
                                 {object.Key?.replace(currentPrefix, "")
                                   .split("/")
@@ -1036,10 +1211,10 @@ export default function S3Explorer() {
                               </span>
                             </div>
                           </td>
-                          <td className="px-6 py-4 text-slate-600 text-sm">
+                          <td className="px-6 py-4 text-sm" style={{ color: token('color', 'secondaryText') }}>
                             {object.LastModified?.toLocaleDateString()}
                           </td>
-                          <td className="px-6 py-4 text-slate-600 text-sm">
+                          <td className="px-6 py-4 text-sm" style={{ color: token('color', 'secondaryText') }}>
                             {object.Size
                               ? `${(object.Size / 1024).toFixed(1)} KB`
                               : "—"}
@@ -1048,7 +1223,17 @@ export default function S3Explorer() {
                             <div className="flex items-center space-x-2">
                               <button
                                 onClick={() => handleDownload(object.Key!)}
-                                className="flex items-center space-x-1 px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition-colors duration-200"
+                                className="flex items-center space-x-1 px-3 py-1.5 rounded-lg transition-colors duration-200"
+                                style={{ 
+                                  backgroundColor: 'rgb(220 252 231)', 
+                                  color: 'rgb(21 128 61)' 
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.backgroundColor = 'rgb(187 247 208)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.backgroundColor = 'rgb(220 252 231)';
+                                }}
                               >
                                 <svg
                                   className="w-4 h-4"
@@ -1067,7 +1252,17 @@ export default function S3Explorer() {
                               </button>
                               <button
                                 onClick={() => handleDelete(object.Key!)}
-                                className="flex items-center space-x-1 px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors duration-200"
+                                className="flex items-center space-x-1 px-3 py-1.5 rounded-lg transition-colors duration-200"
+                                style={{ 
+                                  backgroundColor: 'rgb(254 226 226)', 
+                                  color: 'rgb(185 28 28)' 
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.backgroundColor = 'rgb(252 165 165)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.backgroundColor = 'rgb(254 226 226)';
+                                }}
                               >
                                 <svg
                                   className="w-4 h-4"
@@ -1093,7 +1288,7 @@ export default function S3Explorer() {
               </div>
 
               {/* Mobile Card View */}
-              <div className="sm:hidden divide-y divide-slate-200">
+              <div className="sm:hidden" style={{ borderColor: token('color', 'primaryBorder') }} /* divide-y effect will be handled inline */>
                 {/* Folders */}
                 {prefixes
                   .map((prefix) => {
@@ -1118,7 +1313,14 @@ export default function S3Explorer() {
                   .map((item) => (
                     <div
                       key={item.Prefix}
-                      className="p-4 cursor-pointer hover:bg-blue-50 transition-colors duration-200"
+                      className="p-4 cursor-pointer transition-colors duration-200"
+                      style={{ borderBottomColor: token('color', 'primaryBorder'), borderBottomWidth: '1px' }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = token('color', 'hoverBg');
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                      }}
                     >
                       <div className="flex items-center space-x-3">
                         {isSelectMode && (
@@ -1129,7 +1331,11 @@ export default function S3Explorer() {
                               e.stopPropagation();
                               toggleItemSelection(item.Prefix!);
                             }}
-                            className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 flex-shrink-0"
+                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 flex-shrink-0"
+                            style={{ 
+                              backgroundColor: token('color', 'primaryBg'), 
+                              borderColor: token('color', 'primaryBorder') 
+                            }}
                           />
                         )}
                         <div 
@@ -1151,8 +1357,9 @@ export default function S3Explorer() {
                           </svg>
                         </div>
                         <span 
-                          className="font-medium text-slate-800 truncate"
+                          className="font-medium truncate"
                           onClick={() => !isSelectMode && handlePrefixClick(item.Prefix!)}
+                          style={{ color: token('color', 'primaryText') }}
                         >
                           {item.folderName || "Unnamed Folder"}
                         </span>
@@ -1175,17 +1382,21 @@ export default function S3Explorer() {
                     );
                   })
                   .map((object) => (
-                    <div key={object.Key} className="p-4">
+                    <div key={object.Key} className="p-4" style={{ borderBottomColor: token('color', 'primaryBorder'), borderBottomWidth: '1px' }}>
                       <div className="flex items-center space-x-3 mb-3">
                         {isSelectMode && (
                           <input
                             type="checkbox"
                             checked={selectedItems.has(object.Key!)}
                             onChange={() => toggleItemSelection(object.Key!)}
-                            className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 flex-shrink-0"
+                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 flex-shrink-0"
+                            style={{ 
+                              backgroundColor: token('color', 'primaryBg'), 
+                              borderColor: token('color', 'primaryBorder') 
+                            }}
                           />
                         )}
-                        <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: token('color', 'secondaryBg') }}>
                           <span
                             className="text-xl"
                             dangerouslySetInnerHTML={{
@@ -1195,14 +1406,15 @@ export default function S3Explorer() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p
-                            className="font-medium text-slate-800 truncate"
+                            className="font-medium truncate"
                             title={object.Key?.replace(currentPrefix, "")}
+                            style={{ color: token('color', 'primaryText') }}
                           >
                             {object.Key?.replace(currentPrefix, "")
                               .split("/")
                               .pop() || "Unnamed File"}
                           </p>
-                          <p className="text-sm text-slate-500">
+                          <p className="text-sm" style={{ color: token('color', 'mutedText') }}>
                             {object.LastModified?.toLocaleDateString()} &middot;{" "}
                             {object.Size
                               ? `${(object.Size / 1024).toFixed(1)} KB`
@@ -1213,7 +1425,17 @@ export default function S3Explorer() {
                       <div className="flex items-center justify-end space-x-2">
                         <button
                           onClick={() => handleDownload(object.Key!)}
-                          className="flex items-center space-x-1 px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition-colors duration-200 text-sm"
+                          className="flex items-center space-x-1 px-3 py-1.5 rounded-lg transition-colors duration-200 text-sm"
+                          style={{ 
+                            backgroundColor: 'rgb(220 252 231)', 
+                            color: 'rgb(21 128 61)' 
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = 'rgb(187 247 208)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'rgb(220 252 231)';
+                          }}
                         >
                           <svg
                             className="w-4 h-4"
@@ -1257,7 +1479,7 @@ export default function S3Explorer() {
           </div>
         ) : (
           <div className="text-center py-12">
-            <p className="text-slate-500">
+            <p style={{ color: token('color', 'mutedText') }}>
               Please enter your credentials and select a bucket to begin.
             </p>
           </div>
@@ -1265,9 +1487,13 @@ export default function S3Explorer() {
       </div>
 
       {isCreateFolderModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white/90 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/20 p-6 sm:p-8 w-full max-w-md">
-            <h3 className="text-lg font-semibold text-slate-800 mb-4">
+        <div className="fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+          <div className="backdrop-blur-lg rounded-2xl border p-6 sm:p-8 w-full max-w-md" style={{ 
+            backgroundColor: token('color', 'overlayBg'), 
+            boxShadow: token('shadow', '2xl'), 
+            borderColor: token('color', 'primaryBorder') 
+          }}>
+            <h3 className="text-lg font-semibold mb-4" style={{ color: token('color', 'primaryText') }}>
               Create New Folder
             </h3>
             <div className="space-y-4">
@@ -1276,7 +1502,12 @@ export default function S3Explorer() {
                 value={newFolderName}
                 onChange={(e) => setNewFolderName(e.target.value)}
                 placeholder="Enter folder name"
-                className="w-full px-4 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-slate-900 placeholder-slate-400"
+                className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                style={{ 
+                  backgroundColor: token('color', 'glassBg'), 
+                  borderColor: token('color', 'primaryBorder'), 
+                  color: token('color', 'primaryText') 
+                }}
                 onKeyDown={(e) =>
                   e.key === "Enter" && handleConfirmCreateFolder()
                 }
@@ -1287,13 +1518,30 @@ export default function S3Explorer() {
                     setIsCreateFolderModalOpen(false);
                     setNewFolderName("");
                   }}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors duration-200"
+                  className="px-4 py-2 rounded-lg transition-colors duration-200"
+                  style={{ 
+                    backgroundColor: token('color', 'secondaryBg'), 
+                    color: token('color', 'secondaryText') 
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = token('color', 'hoverBg');
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = token('color', 'secondaryBg');
+                  }}
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleConfirmCreateFolder}
-                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200"
+                  style={{ boxShadow: token('shadow', 'lg') }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.boxShadow = token('shadow', 'xl');
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.boxShadow = token('shadow', 'lg');
+                  }}
                 >
                   Create
                 </button>
@@ -1304,12 +1552,16 @@ export default function S3Explorer() {
       )}
 
       {isDeleteModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white/90 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/20 p-6 sm:p-8 w-full max-w-md">
-            <h3 className="text-lg font-semibold text-slate-800 mb-2">
+        <div className="fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+          <div className="backdrop-blur-lg rounded-2xl border p-6 sm:p-8 w-full max-w-md" style={{ 
+            backgroundColor: token('color', 'overlayBg'), 
+            boxShadow: token('shadow', '2xl'), 
+            borderColor: token('color', 'primaryBorder') 
+          }}>
+            <h3 className="text-lg font-semibold mb-2" style={{ color: token('color', 'primaryText') }}>
               Confirm Deletion
             </h3>
-            <p className="text-slate-600 mb-6">
+            <p className="mb-6" style={{ color: token('color', 'secondaryText') }}>
               Are you sure you want to delete{" "}
               <span className="font-medium text-red-600 break-all">
                 {itemToDelete?.split("/").pop()}
@@ -1322,13 +1574,30 @@ export default function S3Explorer() {
                   setIsDeleteModalOpen(false);
                   setItemToDelete(null);
                 }}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors duration-200"
+                className="px-4 py-2 rounded-lg transition-colors duration-200"
+                style={{ 
+                  backgroundColor: token('color', 'secondaryBg'), 
+                  color: token('color', 'secondaryText') 
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = token('color', 'hoverBg');
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = token('color', 'secondaryBg');
+                }}
               >
                 Cancel
               </button>
               <button
                 onClick={handleConfirmDelete}
-                className="px-4 py-2 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-lg hover:from-red-700 hover:to-rose-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+                className="px-4 py-2 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-lg hover:from-red-700 hover:to-rose-700 transition-all duration-200"
+                style={{ boxShadow: token('shadow', 'lg') }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.boxShadow = token('shadow', 'xl');
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.boxShadow = token('shadow', 'lg');
+                }}
               >
                 Delete
               </button>
@@ -1338,12 +1607,16 @@ export default function S3Explorer() {
       )}
 
       {isBulkDeleteModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white/90 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/20 p-6 sm:p-8 w-full max-w-md">
-            <h3 className="text-lg font-semibold text-slate-800 mb-2">
+        <div className="fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+          <div className="backdrop-blur-lg rounded-2xl border p-6 sm:p-8 w-full max-w-md" style={{ 
+            backgroundColor: token('color', 'overlayBg'), 
+            boxShadow: token('shadow', '2xl'), 
+            borderColor: token('color', 'primaryBorder') 
+          }}>
+            <h3 className="text-lg font-semibold mb-2" style={{ color: token('color', 'primaryText') }}>
               Confirm Bulk Deletion
             </h3>
-            <p className="text-slate-600 mb-6">
+            <p className="mb-6" style={{ color: token('color', 'secondaryText') }}>
               Are you sure you want to delete{" "}
               <span className="font-medium text-red-600">
                 {selectedItems.size} item{selectedItems.size !== 1 ? 's' : ''}
@@ -1353,13 +1626,30 @@ export default function S3Explorer() {
             <div className="flex justify-end space-x-4">
               <button
                 onClick={() => setIsBulkDeleteModalOpen(false)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors duration-200"
+                className="px-4 py-2 rounded-lg transition-colors duration-200"
+                style={{ 
+                  backgroundColor: token('color', 'secondaryBg'), 
+                  color: token('color', 'secondaryText') 
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = token('color', 'hoverBg');
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = token('color', 'secondaryBg');
+                }}
               >
                 Cancel
               </button>
               <button
                 onClick={handleConfirmBulkDelete}
-                className="px-4 py-2 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-lg hover:from-red-700 hover:to-rose-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+                className="px-4 py-2 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-lg hover:from-red-700 hover:to-rose-700 transition-all duration-200"
+                style={{ boxShadow: token('shadow', 'lg') }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.boxShadow = token('shadow', 'xl');
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.boxShadow = token('shadow', 'lg');
+                }}
               >
                 Delete {selectedItems.size} Item{selectedItems.size !== 1 ? 's' : ''}
               </button>
