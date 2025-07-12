@@ -3,7 +3,7 @@
 import { useTheme } from "../contexts/ThemeContext";
 
 export function ThemeToggle() {
-  const { theme, toggle, isDark, classes } = useTheme();
+  const { theme, toggle } = useTheme();
 
   return (
     <button

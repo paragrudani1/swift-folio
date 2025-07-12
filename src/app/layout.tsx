@@ -18,6 +18,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Swift S3 Explorer",
   description: "A simple and modern AWS S3 Explorer.",
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({
@@ -26,7 +29,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="theme-light" data-theme="light">
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -35,15 +38,19 @@ export default function RootLayout({
                 try {
                   const theme = localStorage.getItem('theme');
                   if (theme === 'dark' || theme === 'light') {
-                    document.documentElement.classList.toggle('theme-dark', theme === 'dark');
+                    document.documentElement.className = theme === 'dark' ? 'theme-dark' : 'theme-light';
                     document.documentElement.setAttribute('data-theme', theme);
                   } else {
                     const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
                     const defaultTheme = systemPrefersDark ? 'dark' : 'light';
-                    document.documentElement.classList.toggle('theme-dark', defaultTheme === 'dark');
+                    document.documentElement.className = defaultTheme === 'dark' ? 'theme-dark' : 'theme-light';
                     document.documentElement.setAttribute('data-theme', defaultTheme);
                   }
-                } catch (e) {}
+                } catch (e) {
+                  // Fallback to light theme
+                  document.documentElement.className = 'theme-light';
+                  document.documentElement.setAttribute('data-theme', 'light');
+                }
               })();
             `,
           }}

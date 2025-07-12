@@ -21,7 +21,7 @@ export function ThemeExampleUsage() {
 
   // Example usage of token helper with TypeScript inference
   const primaryBg = token("color", "primaryBg");
-  const textMuted = token("color", "textMuted");
+  const mutedText = token("color", "mutedText");
   const fontSize = token("typography", "fontSize");
   const padding = token("spacing", "padding");
   const borderRadius = token("radii", "borderRadius");
@@ -40,7 +40,7 @@ export function ThemeExampleUsage() {
         <p>Current theme: <strong>{theme}</strong></p>
         <p>Mode: <strong>{currentMode}</strong></p>
         
-        <div style={{ color: textMuted, fontSize: fontSize }}>
+        <div style={{ color: mutedText, fontSize: fontSize }}>
           This text uses theme tokens directly
         </div>
 
@@ -56,7 +56,7 @@ export function ThemeExampleUsage() {
           <h3 className="font-semibold mb-2">Token Values:</h3>
           <ul className="space-y-1 text-sm">
             <li>Primary BG: {primaryBg}</li>
-            <li>Text Muted: {textMuted}</li>
+            <li>Text Muted: {mutedText}</li>
             <li>Font Size: {fontSize}</li>
             <li>Padding: {padding}</li>
             <li>Border Radius: {borderRadius}</li>

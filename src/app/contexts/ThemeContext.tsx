@@ -40,7 +40,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const setTheme = (newTheme: ThemeName) => {
     setThemeState(newTheme);
     localStorage.setItem("theme", newTheme);
-    document.documentElement.classList.toggle("theme-dark", newTheme === "dark");
+    document.documentElement.className = newTheme === "dark" ? "theme-dark" : "theme-light";
     document.documentElement.setAttribute("data-theme", newTheme);
   };
 
@@ -82,7 +82,7 @@ export function useTheme() {
     category: K,
     name: T
   ): string => {
-    return themes[context.theme][category][name];
+    return themes[context.theme][category][name] as string;
   };
 
   return {

@@ -22,7 +22,7 @@ export function useThemeWithCSSVars() {
 
   // Helper to create inline styles with CSS variables
   const varStyles = (vars: Partial<Record<CSSVarName, string>>) => {
-    return Object.entries(vars).reduce((acc, [key, value]) => {
+    return Object.entries(vars).reduce((acc, [key]) => {
       acc[key as string] = `var(${key})`;
       return acc;
     }, {} as Record<string, string>);
