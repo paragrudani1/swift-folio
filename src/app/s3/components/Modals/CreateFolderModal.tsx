@@ -1,6 +1,7 @@
 "use client";
 
 import { useTheme } from "../../../contexts/ThemeContext";
+import { LoadingButton } from "../LoadingButton";
 
 interface CreateFolderModalProps {
   isOpen: boolean;
@@ -8,6 +9,7 @@ interface CreateFolderModalProps {
   onFolderNameChange: (name: string) => void;
   onConfirm: () => void;
   onCancel: () => void;
+  isLoading?: boolean;
 }
 
 export function CreateFolderModal({
@@ -16,6 +18,7 @@ export function CreateFolderModal({
   onFolderNameChange,
   onConfirm,
   onCancel,
+  isLoading = false,
 }: CreateFolderModalProps) {
   const { token } = useTheme();
 
@@ -45,35 +48,24 @@ export function CreateFolderModal({
           onKeyDown={(e) => e.key === "Enter" && onConfirm()}
         />
         <div className="flex justify-end space-x-4 mt-6">
-          <button
+          <LoadingButton
+            isLoading={false}
             onClick={onCancel}
-            className="px-4 py-2 rounded-lg transition-colors duration-200"
-            style={{ 
-              backgroundColor: token('color', 'secondaryBg'), 
-              color: token('color', 'secondaryText') 
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = token('color', 'hoverBg');
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = token('color', 'secondaryBg');
-            }}
+            variant="secondary"
+            size="md"
           >
             Cancel
-          </button>
-          <button
+          </LoadingButton>
+          <LoadingButton
+            isLoading={isLoading}
             onClick={onConfirm}
-            className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200"
-            style={{ boxShadow: token('shadow', 'lg') }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.boxShadow = token('shadow', 'xl');
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.boxShadow = token('shadow', 'lg');
-            }}
+            variant="primary"
+            size="md"
+            loadingText="Creating..."
+            disabled={!newFolderName.trim()}
           >
             Create
-          </button>
+          </LoadingButton>
         </div>
       </div>
     </div>

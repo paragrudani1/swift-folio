@@ -12,6 +12,16 @@ interface UploadAreaProps {
   currentlyUploadingFolder: string | null;
   onUploadSuccess: () => void;
   onUploadProgress: (progress: number, folder?: string) => void;
+  uploadFiles: (
+    s3Client: S3Client,
+    bucketName: string,
+    prefix: string,
+    files: File[],
+    onProgress?: (progress: number) => void
+  ) => Promise<{ cancelled: boolean }>;
+  cancelUpload: () => void;
+  isUploading?: boolean;
+  onUploadCancelled?: () => void;
 }
 
 export function UploadArea({
@@ -22,6 +32,10 @@ export function UploadArea({
   currentlyUploadingFolder,
   onUploadSuccess,
   onUploadProgress,
+  uploadFiles,
+  cancelUpload,
+  isUploading = false,
+  onUploadCancelled,
 }: UploadAreaProps) {
   const { token } = useTheme();
 
@@ -37,12 +51,16 @@ export function UploadArea({
         prefix={currentPrefix}
         onUploadSuccess={onUploadSuccess}
         onProgress={onUploadProgress}
+        uploadFiles={uploadFiles}
+        cancelUpload={cancelUpload}
+        isUploading={isUploading}
+        onUploadCancelled={onUploadCancelled}
       />
       
       {/* Upload Progress */}
       {uploadProgress !== null && (
         <div className="mt-4">
-          <div className="flex justify-between text-sm mb-2" style={{ color: token('color', 'secondaryText') }}>
+          <div className="flex justify-between items-center text-sm mb-2" style={{ color: token('color', 'secondaryText') }}>
             <span>
               {currentlyUploadingFolder
                 ? `Uploading folder: ${currentlyUploadingFolder}`

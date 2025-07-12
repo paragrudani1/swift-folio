@@ -159,16 +159,23 @@ export const useS3Explorer = () => {
   /**
    * Handle upload success
    */
-  const handleUploadSuccess = useCallback(() => {
+  const handleUploadSuccess = useCallback(async () => {
     setUploadProgress(null);
     setCurrentlyUploadingFolder(null);
+    
+    // Refresh the file list after successful upload
+    // This will be handled by the parent component
+    // by calling listObjects and updating the state
   }, []);
 
   /**
-   * Handle upload progress
+   * Handle upload progress with throttling to reduce excessive updates
    */
   const handleUploadProgress = useCallback((progress: number) => {
-    setUploadProgress(progress);
+    // Use requestAnimationFrame to throttle progress updates
+    requestAnimationFrame(() => {
+      setUploadProgress(progress);
+    });
   }, []);
 
   /**

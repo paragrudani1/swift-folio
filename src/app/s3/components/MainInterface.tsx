@@ -28,6 +28,16 @@ interface MainInterfaceProps {
   onRequestSort: (key: keyof _Object) => void;
   onToggleSelectMode: () => void;
   onSelectAll: () => void;
+  uploadFiles: (
+    s3Client: S3Client,
+    bucketName: string,
+    prefix: string,
+    files: File[],
+    onProgress?: (progress: number) => void
+  ) => Promise<{ cancelled: boolean }>;
+  cancelUpload: () => void;
+  isUploading?: boolean;
+  onUploadCancelled?: () => void;
   onClearSelection: () => void;
   onBulkDelete: () => void;
   onDownload: (key: string) => void;
@@ -61,6 +71,10 @@ export function MainInterface({
   onBulkDelete,
   onDownload,
   onDelete,
+  uploadFiles,
+  cancelUpload,
+  isUploading = false,
+  onUploadCancelled,
 }: MainInterfaceProps) {
   return (
     <div className="space-y-6">
@@ -83,6 +97,10 @@ export function MainInterface({
         currentlyUploadingFolder={currentlyUploadingFolder}
         onUploadSuccess={onUploadSuccess}
         onUploadProgress={onUploadProgress}
+        uploadFiles={uploadFiles}
+        cancelUpload={cancelUpload}
+        isUploading={isUploading}
+        onUploadCancelled={onUploadCancelled}
       />
 
       {/* File Explorer */}

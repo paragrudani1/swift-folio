@@ -1,12 +1,14 @@
 "use client";
 
 import { useTheme } from "../../../contexts/ThemeContext";
+import { LoadingButton } from "../LoadingButton";
 
 interface DeleteModalProps {
   isOpen: boolean;
   itemToDelete: string | null;
   onConfirm: () => void;
   onCancel: () => void;
+  isLoading?: boolean;
 }
 
 export function DeleteModal({
@@ -14,6 +16,7 @@ export function DeleteModal({
   itemToDelete,
   onConfirm,
   onCancel,
+  isLoading = false,
 }: DeleteModalProps) {
   const { token } = useTheme();
 
@@ -51,35 +54,23 @@ export function DeleteModal({
           </p>
         </div>
         <div className="flex justify-end space-x-4">
-          <button
+          <LoadingButton
+            isLoading={false}
             onClick={onCancel}
-            className="px-4 py-2 rounded-lg transition-colors duration-200"
-            style={{ 
-              backgroundColor: token('color', 'secondaryBg'), 
-              color: token('color', 'secondaryText') 
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = token('color', 'hoverBg');
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = token('color', 'secondaryBg');
-            }}
+            variant="secondary"
+            size="md"
           >
             Cancel
-          </button>
-          <button
+          </LoadingButton>
+          <LoadingButton
+            isLoading={isLoading}
             onClick={onConfirm}
-            className="px-4 py-2 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-lg hover:from-red-700 hover:to-rose-700 transition-all duration-200"
-            style={{ boxShadow: token('shadow', 'lg') }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.boxShadow = token('shadow', 'xl');
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.boxShadow = token('shadow', 'lg');
-            }}
+            variant="danger"
+            size="md"
+            loadingText="Deleting..."
           >
             Delete
-          </button>
+          </LoadingButton>
         </div>
       </div>
     </div>

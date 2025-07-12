@@ -1,6 +1,7 @@
 import React from "react";
 import { useTheme } from "../../contexts/ThemeContext";
 import { ThemeToggle } from "../../components/ThemeToggle";
+import { LoadingSpinner } from "./LoadingSpinner";
 import { formatFileSize } from "../utils";
 
 interface HeaderProps {
@@ -78,7 +79,10 @@ export const Header: React.FC<HeaderProps> = ({
               >
                 <span className="font-medium">Storage:</span>{" "}
                 {loadingStorageUsage ? (
-                  <span className="animate-pulse">Loading...</span>
+                  <div className="inline-flex items-center space-x-2">
+                    <LoadingSpinner size="sm" color="secondary" />
+                    <span>Loading...</span>
+                  </div>
                 ) : storageUsage !== null ? (
                   <span className="font-semibold text-blue-600">
                     {formatFileSize(storageUsage)}

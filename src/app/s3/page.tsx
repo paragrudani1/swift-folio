@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import { useTheme } from "../contexts/ThemeContext";
 
 // Components
@@ -11,6 +11,7 @@ import {
   CreateFolderModal,
   DeleteModal,
   BulkDeleteModal,
+  LoadingOverlay,
 } from "./components";
 
 // Hooks
@@ -100,14 +101,21 @@ export default function S3Explorer() {
   // Custom hooks for S3 operations
   const {
     error: s3Error,
+    loadingStates,
     listObjects,
     downloadFile,
     deleteFile,
     deleteMultipleFiles,
     deleteFolder,
     createFolder,
+    uploadFiles,
+    cancelUpload,
     getBucketStorageUsage,
   } = useS3Operations();
+
+  // Add ref to prevent duplicate refreshes
+  const lastRefreshTimeRef = useRef<number>(0);
+  const REFRESH_DEBOUNCE_MS = 500; // Minimum time between refreshes
 
   // Sync errors between hooks
   useEffect(() => {
@@ -164,6 +172,39 @@ export default function S3Explorer() {
       console.error("Download failed:", err);
     }
   };
+
+  // Enhanced handleUploadSuccess to refresh file list with debouncing
+  const handleUploadSuccessWithRefresh = useCallback(async () => {
+    const now = Date.now();
+    
+    // Debounce to prevent rapid successive calls
+    if (now - lastRefreshTimeRef.current < REFRESH_DEBOUNCE_MS) {
+      return;
+    }
+    
+    lastRefreshTimeRef.current = now;
+    handleUploadSuccess(); // Reset upload progress
+    
+    // Refresh the file list
+    if (s3Client && selectedBucket) {
+      try {
+        const { objects: newObjects, prefixes: newPrefixes } = await listObjects(
+          s3Client, 
+          selectedBucket, 
+          currentPrefix
+        );
+        setObjects(newObjects);
+        setPrefixes(newPrefixes);
+      } catch (err) {
+        console.error("Failed to refresh after upload:", err);
+      }
+    }
+  }, [handleUploadSuccess, s3Client, selectedBucket, currentPrefix, listObjects, setObjects, setPrefixes]);
+
+  // Handle when upload is cancelled (reset progress)
+  const handleUploadCancelled = useCallback(() => {
+    handleUploadSuccess(); // Reset upload progress and state
+  }, [handleUploadSuccess]);
 
   // Handle file deletion
   const handleConfirmDelete = async () => {
@@ -322,34 +363,44 @@ export default function S3Explorer() {
           />
         ) : selectedBucket ? (
           /* Main Explorer Interface */
-          <MainInterface
-            s3Client={s3Client}
-            selectedBucket={selectedBucket}
-            currentPrefix={currentPrefix}
-            objects={objects}
-            prefixes={prefixes}
-            filteredObjects={filteredObjects.filter((o) => isValidFile(o.Key || ""))}
-            filteredPrefixes={filteredPrefixesWithNames}
-            isSelectMode={isSelectMode}
-            selectedItems={selectedItems}
-            searchTerm={searchTerm}
-            uploadProgress={uploadProgress}
-            currentlyUploadingFolder={currentlyUploadingFolder}
-            onSearchChange={setSearchTerm}
-            onBackClick={handleBackClick}
-            onCreateFolderClick={handleCreateFolderClick}
-            onUploadSuccess={handleUploadSuccess}
-            onUploadProgress={handleUploadProgress}
-            onItemSelection={toggleItemSelection}
-            onPrefixClick={handlePrefixClick}
-            onRequestSort={requestSort}
-            onToggleSelectMode={toggleSelectMode}
-            onSelectAll={selectAllItems}
-            onClearSelection={clearSelection}
-            onBulkDelete={handleBulkDelete}
-            onDownload={handleDownload}
-            onDelete={handleDelete}
-          />
+          <LoadingOverlay 
+            isVisible={loadingStates.listing} 
+            message="Loading files..."
+            size="lg"
+          >
+            <MainInterface
+              s3Client={s3Client}
+              selectedBucket={selectedBucket}
+              currentPrefix={currentPrefix}
+              objects={objects}
+              prefixes={prefixes}
+              filteredObjects={filteredObjects.filter((o) => isValidFile(o.Key || ""))}
+              filteredPrefixes={filteredPrefixesWithNames}
+              isSelectMode={isSelectMode}
+              selectedItems={selectedItems}
+              searchTerm={searchTerm}
+              uploadProgress={uploadProgress}
+              currentlyUploadingFolder={currentlyUploadingFolder}
+              onSearchChange={setSearchTerm}
+              onBackClick={handleBackClick}
+              onCreateFolderClick={handleCreateFolderClick}
+              onUploadSuccess={handleUploadSuccessWithRefresh}
+              onUploadProgress={handleUploadProgress}
+              onItemSelection={toggleItemSelection}
+              onPrefixClick={handlePrefixClick}
+              onRequestSort={requestSort}
+              onToggleSelectMode={toggleSelectMode}
+              onSelectAll={selectAllItems}
+              onClearSelection={clearSelection}
+              onBulkDelete={handleBulkDelete}
+              onDownload={handleDownload}
+              onDelete={handleDelete}
+              uploadFiles={uploadFiles}
+              isUploading={loadingStates.uploading}
+              cancelUpload={cancelUpload}
+              onUploadCancelled={handleUploadCancelled}
+            />
+          </LoadingOverlay>
         ) : (
           <div className="text-center py-12">
             <p style={{ color: token('color', 'mutedText') }}>
@@ -366,6 +417,7 @@ export default function S3Explorer() {
         onFolderNameChange={setNewFolderName}
         onConfirm={handleConfirmCreateFolder}
         onCancel={closeCreateFolderModal}
+        isLoading={loadingStates.creating}
       />
 
       <DeleteModal
@@ -373,6 +425,7 @@ export default function S3Explorer() {
         itemToDelete={itemToDelete}
         onConfirm={handleConfirmDelete}
         onCancel={closeDeleteModal}
+        isLoading={loadingStates.deleting}
       />
 
       <BulkDeleteModal
@@ -380,6 +433,7 @@ export default function S3Explorer() {
         selectedItemsCount={selectedItems.size}
         onConfirm={handleConfirmBulkDelete}
         onCancel={closeBulkDeleteModal}
+        isLoading={loadingStates.deleting}
       />
     </div>
   );
