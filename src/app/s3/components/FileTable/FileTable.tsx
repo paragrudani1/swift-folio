@@ -43,15 +43,16 @@ export function FileTable({
 
   return (
     <div className="hidden sm:block overflow-x-auto">
-      <table className="w-full">
-        <FileTableHeader
-          isSelectMode={isSelectMode}
-          selectedItems={selectedItems}
-          totalItems={objects.length + prefixes.length}
-          onRequestSort={onRequestSort}
-          onSelectAll={onSelectAll}
-          onClearSelection={onClearSelection}
-        />
+      <div className="min-w-full md:min-w-0">
+        <table className="w-full min-w-[640px] md:min-w-full">
+          <FileTableHeader
+            isSelectMode={isSelectMode}
+            selectedItems={selectedItems}
+            totalItems={objects.length + prefixes.length}
+            onRequestSort={onRequestSort}
+            onSelectAll={onSelectAll}
+            onClearSelection={onClearSelection}
+          />
         <tbody style={{ borderColor: token('color', 'primaryBorder') }} className="divide-y">
           {/* Folders */}
           {filteredPrefixes.map((item) => (
@@ -80,7 +81,8 @@ export function FileTable({
             />
           ))}
         </tbody>
-      </table>
+        </table>
+      </div>
     </div>
   );
 }

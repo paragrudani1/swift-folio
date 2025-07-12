@@ -2,6 +2,7 @@
 
 import { CommonPrefix } from "@aws-sdk/client-s3";
 import { useTheme } from "../../../contexts/ThemeContext";
+import { Icons } from "../Icons";
 
 interface FolderCardProps {
   prefix: CommonPrefix;
@@ -24,7 +25,7 @@ export function FolderCard({
 
   return (
     <div
-      className="p-4 cursor-pointer transition-colors duration-200"
+      className="p-4 cursor-pointer transition-colors duration-200 touch-manipulation"
       style={{ borderBottomColor: token('color', 'primaryBorder'), borderBottomWidth: '1px' }}
       onMouseEnter={(e) => {
         e.currentTarget.style.backgroundColor = token('color', 'hoverBg');
@@ -42,7 +43,7 @@ export function FolderCard({
               e.stopPropagation();
               onItemSelection(prefix.Prefix!);
             }}
-            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 flex-shrink-0"
+            className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 flex-shrink-0 cursor-pointer"
             style={{ 
               backgroundColor: token('color', 'primaryBg'), 
               borderColor: token('color', 'primaryBorder') 
@@ -50,26 +51,15 @@ export function FolderCard({
           />
         )}
         <div 
-          className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+          className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 touch-manipulation"
           onClick={() => !isSelectMode && onPrefixClick(prefix.Prefix!)}
           style={{ 
             backgroundColor: token('color', 'tertiaryBg'),
           }}
         >
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            style={{ color: token('color', 'focusBorder') }}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"
-            />
-          </svg>
+          <div className="w-6 h-6" style={{ color: token('color', 'focusBorder') }}>
+            {Icons.Folder}
+          </div>
         </div>
         <span 
           className="font-medium truncate"

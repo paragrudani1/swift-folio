@@ -40,7 +40,7 @@ export function UploadArea({
   const { token } = useTheme();
 
   return (
-    <div className="backdrop-blur-sm rounded-2xl border p-4 sm:p-6" style={{ 
+    <div className="backdrop-blur-sm rounded-2xl border p-4 sm:p-6 lg:p-8" style={{ 
       backgroundColor: token('color', 'overlayBg'), 
       boxShadow: token('shadow', 'lg'), 
       borderColor: token('color', 'primaryBorder') 

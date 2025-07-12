@@ -34,7 +34,7 @@ export function FolderRow({
       }}
     >
       {isSelectMode && (
-        <td className="w-12 px-4 py-4">
+        <td className="w-12 px-4 py-4 md:px-6">
           <input
             type="checkbox"
             checked={isSelected}
@@ -42,7 +42,7 @@ export function FolderRow({
               e.stopPropagation();
               onItemSelection(prefix.Prefix!);
             }}
-            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+            className="w-5 h-5 md:w-4 md:h-4 text-blue-600 rounded focus:ring-blue-500 cursor-pointer"
             style={{ 
               backgroundColor: token('color', 'primaryBg'), 
               borderColor: token('color', 'primaryBorder') 
@@ -51,7 +51,7 @@ export function FolderRow({
         </td>
       )}
       <td 
-        className="px-6 py-4"
+        className="px-4 md:px-6 py-4 touch-manipulation"
         onClick={() => !isSelectMode && onPrefixClick(prefix.Prefix!)}
       >
         <div className="flex items-center space-x-3">
@@ -81,9 +81,9 @@ export function FolderRow({
           </span>
         </div>
       </td>
-      <td className="px-6 py-4" style={{ color: token('color', 'mutedText') }}>—</td>
-      <td className="px-6 py-4" style={{ color: token('color', 'mutedText') }}>—</td>
-      <td className="px-6 py-4" style={{ color: token('color', 'mutedText') }}>—</td>
+      <td className="px-4 md:px-6 py-4 hidden md:table-cell" style={{ color: token('color', 'mutedText') }}>—</td>
+      <td className="px-4 md:px-6 py-4 hidden lg:table-cell" style={{ color: token('color', 'mutedText') }}>—</td>
+      <td className="px-4 md:px-6 py-4" style={{ color: token('color', 'mutedText') }}>—</td>
     </tr>
   );
 }

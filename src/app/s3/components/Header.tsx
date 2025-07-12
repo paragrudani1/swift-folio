@@ -94,7 +94,7 @@ export const Header: React.FC<HeaderProps> = ({
               <ThemeToggle />
               <button
                 onClick={onLogout}
-                className="flex items-center space-x-2 px-3 sm:px-4 py-2 border rounded-lg transition-colors duration-200 text-sm hover:scale-105 transform"
+                className="flex items-center justify-center p-2.5 border rounded-lg transition-colors duration-200 text-sm hover:scale-105 transform touch-manipulation min-w-[44px] min-h-[44px] sm:min-w-[40px] sm:min-h-[40px]"
                 style={{
                   backgroundColor: token("color", "overlayBg"),
                   color: token("color", "primaryText"),
@@ -106,10 +106,11 @@ export const Header: React.FC<HeaderProps> = ({
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = token("color", "overlayBg");
                 }}
-                title="Logout"
+                title="Logout from S3 Explorer"
+                aria-label="Logout from S3 Explorer"
               >
                 <svg
-                  className="w-4 h-4"
+                  className="w-5 h-5"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -121,7 +122,6 @@ export const Header: React.FC<HeaderProps> = ({
                     d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
                   />
                 </svg>
-                <span className="hidden sm:inline">Logout</span>
               </button>
             </div>
           )}

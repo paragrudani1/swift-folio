@@ -3,6 +3,8 @@
 import { _Object } from "@aws-sdk/client-s3";
 import { useTheme } from "../../../contexts/ThemeContext";
 import { extractFileName, getFileIcon, isValidFile } from "../../utils";
+import { IconButton } from "../IconButton";
+import { Icons } from "../Icons";
 
 interface FileCardProps {
   object: _Object;
@@ -40,13 +42,13 @@ export function FileCard({
         borderBottomWidth: '1px' 
       }}
     >
-      <div className="flex items-center space-x-3 mb-3">
+      <div className="flex items-center space-x-3">
         {isSelectMode && (
           <input
             type="checkbox"
             checked={isSelected}
             onChange={() => onItemSelection(object.Key!)}
-            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 flex-shrink-0"
+            className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 flex-shrink-0 cursor-pointer"
             style={{ 
               backgroundColor: token('color', 'primaryBg'), 
               borderColor: token('color', 'primaryBorder') 
@@ -54,7 +56,7 @@ export function FileCard({
           />
         )}
         <div 
-          className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" 
+          className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0" 
           style={{ backgroundColor: token('color', 'secondaryBg') }}
         >
           <span
@@ -79,56 +81,26 @@ export function FileCard({
               : "—"}
           </p>
         </div>
-      </div>
-      <div className="flex items-center justify-end space-x-2">
-        <button
-          onClick={() => onDownload(object.Key!)}
-          className="flex items-center space-x-1 px-3 py-1.5 rounded-lg transition-colors duration-200 text-sm"
-          style={{ 
-            backgroundColor: 'rgb(220 252 231)', 
-            color: 'rgb(21 128 61)' 
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = 'rgb(187 247 208)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'rgb(220 252 231)';
-          }}
-        >
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-            />
-          </svg>
-          <span>Download</span>
-        </button>
-        <button
-          onClick={() => onDelete(object.Key!)}
-          className="flex items-center space-x-1 px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors duration-200 text-sm"
-        >
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-            />
-          </svg>
-          <span>Delete</span>
-        </button>
+        <div className="flex items-center space-x-2 flex-shrink-0">
+          <IconButton
+            icon={Icons.Download}
+            onClick={() => onDownload(object.Key!)}
+            variant="success"
+            size="md"
+            iconOnly={true}
+            title="Download file"
+            ariaLabel="Download file"
+          />
+          <IconButton
+            icon={Icons.Delete}
+            onClick={() => onDelete(object.Key!)}
+            variant="danger"
+            size="md"
+            iconOnly={true}
+            title="Delete file"
+            ariaLabel="Delete file"
+          />
+        </div>
       </div>
     </div>
   );

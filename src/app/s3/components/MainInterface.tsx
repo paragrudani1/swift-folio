@@ -77,7 +77,7 @@ export function MainInterface({
   onUploadCancelled,
 }: MainInterfaceProps) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Breadcrumb and Actions */}
       <Breadcrumb
         selectedBucket={selectedBucket}

@@ -26,12 +26,12 @@ export function FileTableHeader({
     <thead style={{ backgroundColor: token('color', 'secondaryBg') }}>
       <tr>
         {isSelectMode && (
-          <th className="w-12 px-4 py-4">
+          <th className="w-12 px-4 py-4 md:px-6">
             <input
               type="checkbox"
               checked={selectedItems.size > 0 && selectedItems.size === totalItems}
               onChange={(e) => e.target.checked ? onSelectAll() : onClearSelection()}
-              className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+              className="w-5 h-5 md:w-4 md:h-4 text-blue-600 rounded focus:ring-blue-500 cursor-pointer"
               style={{ 
                 backgroundColor: token('color', 'primaryBg'), 
                 borderColor: token('color', 'primaryBorder') 
@@ -40,7 +40,7 @@ export function FileTableHeader({
           </th>
         )}
         <th
-          className="px-6 py-4 text-left text-sm font-medium cursor-pointer transition-colors"
+          className="px-4 md:px-6 py-4 text-left text-sm font-medium cursor-pointer transition-colors touch-manipulation"
           onClick={() => onRequestSort("Key")}
           style={{ color: token('color', 'secondaryText') }}
           onMouseEnter={(e) => {
@@ -68,7 +68,7 @@ export function FileTableHeader({
           </div>
         </th>
         <th
-          className="px-6 py-4 text-left text-sm font-medium cursor-pointer transition-colors"
+          className="px-4 md:px-6 py-4 text-left text-sm font-medium cursor-pointer transition-colors touch-manipulation hidden md:table-cell"
           onClick={() => onRequestSort("LastModified")}
           style={{ color: token('color', 'secondaryText') }}
           onMouseEnter={(e) => {
@@ -96,7 +96,7 @@ export function FileTableHeader({
           </div>
         </th>
         <th
-          className="px-6 py-4 text-left text-sm font-medium cursor-pointer transition-colors"
+          className="px-4 md:px-6 py-4 text-left text-sm font-medium cursor-pointer transition-colors touch-manipulation hidden lg:table-cell"
           onClick={() => onRequestSort("Size")}
           style={{ color: token('color', 'secondaryText') }}
           onMouseEnter={(e) => {
@@ -123,7 +123,7 @@ export function FileTableHeader({
             </svg>
           </div>
         </th>
-        <th className="px-6 py-4 text-left text-sm font-medium" style={{ color: token('color', 'secondaryText') }}>
+        <th className="px-4 md:px-6 py-4 text-left text-sm font-medium" style={{ color: token('color', 'secondaryText') }}>
           Actions
         </th>
       </tr>

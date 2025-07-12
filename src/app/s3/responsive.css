@@ -1,0 +1,92 @@
+/* Responsive optimizations for S3 Explorer */
+
+/* Enhanced touch targets for mobile */
+@media (max-width: 639px) {
+  .touch-target {
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+  
+  /* Ensure buttons are easier to tap */
+  button {
+    padding: 12px !important;
+  }
+  
+  /* Better checkbox sizes on mobile */
+  input[type="checkbox"] {
+    width: 20px !important;
+    height: 20px !important;
+  }
+}
+
+/* Tablet optimizations */
+@media (min-width: 640px) and (max-width: 1023px) {
+  /* Better spacing for tablets */
+  .tablet-spacing {
+    padding: 1.5rem !important;
+  }
+  
+  /* Optimized table layout for tablets */
+  .tablet-table {
+    min-width: 100% !important;
+  }
+}
+
+/* Landscape phone optimizations */
+@media (max-height: 500px) and (orientation: landscape) {
+  /* Reduce vertical padding in landscape */
+  .landscape-compact {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+  
+  /* Make modals more compact in landscape */
+  .modal-landscape {
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+  }
+}
+
+/* Desktop enhancements */
+@media (min-width: 1024px) {
+  /* Better hover states for desktop */
+  .desktop-hover:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  }
+  
+  /* Enhanced spacing for large screens */
+  .desktop-spacing {
+    padding: 2rem !important;
+  }
+}
+
+/* Progressive enhancement for ultra-wide screens */
+@media (min-width: 1536px) {
+  .ultra-wide {
+    max-width: 1400px !important;
+    margin: 0 auto !important;
+  }
+}
+
+/* Fix for table responsiveness */
+@media (max-width: 767px) {
+  .responsive-table {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .responsive-table table {
+    min-width: 640px !important;
+  }
+}
+
+/* Enhanced loading states for mobile */
+@media (max-width: 639px) {
+  .loading-mobile {
+    min-height: 60px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+}
