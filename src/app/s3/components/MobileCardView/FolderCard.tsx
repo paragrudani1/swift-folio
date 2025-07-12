@@ -50,14 +50,18 @@ export function FolderCard({
           />
         )}
         <div 
-          className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0"
+          className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
           onClick={() => !isSelectMode && onPrefixClick(prefix.Prefix!)}
+          style={{ 
+            backgroundColor: token('color', 'tertiaryBg'),
+          }}
         >
           <svg
-            className="w-6 h-6 text-blue-600"
+            className="w-6 h-6"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
+            style={{ color: token('color', 'focusBorder') }}
           >
             <path
               strokeLinecap="round"
