@@ -23,24 +23,32 @@ export function FileTableHeader({
   const { token } = useTheme();
 
   return (
-    <thead style={{ backgroundColor: token('color', 'secondaryBg') }}>
-      <tr>
+    <thead>
+      <tr 
+        className="border-b shadow-sm" 
+        style={{ 
+          backgroundColor: token('color', 'secondaryBg'),
+          borderColor: token('color', 'primaryBorder') 
+        }}
+      >
         {isSelectMode && (
-          <th className="w-12 px-4 py-4 md:px-6">
-            <input
-              type="checkbox"
-              checked={selectedItems.size > 0 && selectedItems.size === totalItems}
-              onChange={(e) => e.target.checked ? onSelectAll() : onClearSelection()}
-              className="w-5 h-5 md:w-4 md:h-4 text-blue-600 rounded focus:ring-blue-500 cursor-pointer"
-              style={{ 
-                backgroundColor: token('color', 'primaryBg'), 
-                borderColor: token('color', 'primaryBorder') 
-              }}
-            />
+          <th className="w-12 px-4 py-3 md:px-6 md:py-4">
+            <div className="flex items-center justify-center">
+              <input
+                type="checkbox"
+                checked={selectedItems.size > 0 && selectedItems.size === totalItems}
+                onChange={(e) => e.target.checked ? onSelectAll() : onClearSelection()}
+                className="w-5 h-5 md:w-4 md:h-4 text-blue-600 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer transition-all"
+                style={{ 
+                  backgroundColor: token('color', 'primaryBg'), 
+                  borderColor: token('color', 'primaryBorder') 
+                }}
+              />
+            </div>
           </th>
         )}
         <th
-          className="px-4 md:px-6 py-4 text-left text-sm font-medium cursor-pointer transition-colors touch-manipulation"
+          className="min-w-[200px] px-4 md:px-6 py-3 md:py-4 text-left text-xs md:text-sm font-semibold uppercase tracking-wide cursor-pointer transition-colors touch-manipulation"
           onClick={() => onRequestSort("Key")}
           style={{ color: token('color', 'secondaryText') }}
           onMouseEnter={(e) => {
@@ -50,10 +58,10 @@ export function FileTableHeader({
             e.currentTarget.style.color = token('color', 'secondaryText');
           }}
         >
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1 md:space-x-2">
             <span>Name</span>
             <svg
-              className="w-4 h-4"
+              className="w-3 h-3 md:w-4 md:h-4"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -68,7 +76,7 @@ export function FileTableHeader({
           </div>
         </th>
         <th
-          className="px-4 md:px-6 py-4 text-left text-sm font-medium cursor-pointer transition-colors touch-manipulation hidden md:table-cell"
+          className="w-32 sm:w-36 md:w-44 px-4 md:px-6 py-3 md:py-4 text-left text-xs md:text-sm font-semibold uppercase tracking-wide cursor-pointer transition-colors touch-manipulation hidden md:table-cell"
           onClick={() => onRequestSort("LastModified")}
           style={{ color: token('color', 'secondaryText') }}
           onMouseEnter={(e) => {
@@ -78,10 +86,10 @@ export function FileTableHeader({
             e.currentTarget.style.color = token('color', 'secondaryText');
           }}
         >
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1 md:space-x-2">
             <span>Modified</span>
             <svg
-              className="w-4 h-4"
+              className="w-3 h-3 md:w-4 md:h-4"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -96,7 +104,7 @@ export function FileTableHeader({
           </div>
         </th>
         <th
-          className="px-4 md:px-6 py-4 text-left text-sm font-medium cursor-pointer transition-colors touch-manipulation hidden lg:table-cell"
+          className="w-24 sm:w-28 md:w-32 px-4 md:px-6 py-3 md:py-4 text-left text-xs md:text-sm font-semibold uppercase tracking-wide cursor-pointer transition-colors touch-manipulation hidden lg:table-cell"
           onClick={() => onRequestSort("Size")}
           style={{ color: token('color', 'secondaryText') }}
           onMouseEnter={(e) => {
@@ -106,10 +114,10 @@ export function FileTableHeader({
             e.currentTarget.style.color = token('color', 'secondaryText');
           }}
         >
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1 md:space-x-2">
             <span>Size</span>
             <svg
-              className="w-4 h-4"
+              className="w-3 h-3 md:w-4 md:h-4"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -123,8 +131,8 @@ export function FileTableHeader({
             </svg>
           </div>
         </th>
-        <th className="px-4 md:px-6 py-4 text-left text-sm font-medium" style={{ color: token('color', 'secondaryText') }}>
-          Actions
+        <th className="w-32 sm:w-36 md:w-40 px-4 md:px-6 py-3 md:py-4 text-right text-xs md:text-sm font-semibold uppercase tracking-wide" style={{ color: token('color', 'secondaryText') }}>
+          <span className="sr-only sm:not-sr-only">Actions</span>
         </th>
       </tr>
     </thead>

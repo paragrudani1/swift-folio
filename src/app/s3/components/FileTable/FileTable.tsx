@@ -42,9 +42,9 @@ export function FileTable({
   const { token } = useTheme();
 
   return (
-    <div className="hidden sm:block overflow-x-auto">
+    <div className="hidden sm:block overflow-x-auto border rounded-lg" style={{ borderColor: token('color', 'primaryBorder') }}>
       <div className="min-w-full md:min-w-0">
-        <table className="w-full min-w-[640px] md:min-w-full">
+        <table className="w-full min-w-[640px] md:min-w-full" style={{ backgroundColor: token('color', 'primaryBg') }}>
           <FileTableHeader
             isSelectMode={isSelectMode}
             selectedItems={selectedItems}
@@ -53,7 +53,7 @@ export function FileTable({
             onSelectAll={onSelectAll}
             onClearSelection={onClearSelection}
           />
-        <tbody style={{ borderColor: token('color', 'primaryBorder') }} className="divide-y">
+        <tbody className="divide-y" style={{ borderColor: token('color', 'primaryBorder') }}>
           {/* Folders */}
           {filteredPrefixes.map((item) => (
             <FolderRow

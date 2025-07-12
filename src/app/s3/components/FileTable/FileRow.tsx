@@ -31,32 +31,46 @@ export function FileRow({
 
   return (
     <tr
-      className="transition-colors duration-200"
-      style={{ borderBottomColor: token('color', 'primaryBorder') }}
+      className="transition-all duration-200 hover:shadow-sm border-b"
+      style={{ 
+        borderBottomColor: token('color', 'primaryBorder'),
+        backgroundColor: isSelected ? token('color', 'overlayBg') : 'transparent'
+      }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.backgroundColor = token('color', 'hoverBg');
+        if (!isSelected) {
+          e.currentTarget.style.backgroundColor = token('color', 'hoverBg');
+        }
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.backgroundColor = 'transparent';
+        if (!isSelected) {
+          e.currentTarget.style.backgroundColor = 'transparent';
+        } else {
+          e.currentTarget.style.backgroundColor = token('color', 'overlayBg');
+        }
       }}
     >
       {isSelectMode && (
         <td className="w-12 px-4 py-4 md:px-6">
-          <input
-            type="checkbox"
-            checked={isSelected}
-            onChange={() => onItemSelection(object.Key!)}
-            className="w-5 h-5 md:w-4 md:h-4 text-blue-600 rounded focus:ring-blue-500 cursor-pointer"
-            style={{ 
-              backgroundColor: token('color', 'primaryBg'), 
-              borderColor: token('color', 'primaryBorder') 
-            }}
-          />
+          <div className="flex items-center justify-center">
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={() => onItemSelection(object.Key!)}
+              className="w-5 h-5 md:w-4 md:h-4 text-blue-600 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer transition-all"
+              style={{ 
+                backgroundColor: token('color', 'primaryBg'), 
+                borderColor: token('color', 'primaryBorder') 
+              }}
+            />
+          </div>
         </td>
       )}
-      <td className="px-4 md:px-6 py-4">
+      <td className="min-w-[200px] px-4 md:px-6 py-4">
         <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: token('color', 'secondaryBg') }}>
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-sm" style={{ 
+            backgroundColor: token('color', 'secondaryBg'),
+            border: `1px solid ${token('color', 'primaryBorder')}`
+          }}>
             <span
               className="text-lg"
               dangerouslySetInnerHTML={{
@@ -73,14 +87,14 @@ export function FileRow({
           </span>
         </div>
       </td>
-      <td className="px-4 md:px-6 py-4 text-sm hidden md:table-cell" style={{ color: token('color', 'secondaryText') }}>
+      <td className="w-32 sm:w-36 md:w-44 px-4 md:px-6 py-4 text-sm hidden md:table-cell" style={{ color: token('color', 'secondaryText') }}>
         {object.LastModified?.toLocaleDateString()}
       </td>
-      <td className="px-4 md:px-6 py-4 text-sm hidden lg:table-cell" style={{ color: token('color', 'secondaryText') }}>
+      <td className="w-24 sm:w-28 md:w-32 px-4 md:px-6 py-4 text-sm hidden lg:table-cell" style={{ color: token('color', 'secondaryText') }}>
         {object.Size ? `${(object.Size / 1024).toFixed(1)} KB` : "—"}
       </td>
-      <td className="px-4 md:px-6 py-4">
-        <div className="flex items-center space-x-1 sm:space-x-2">
+      <td className="w-32 sm:w-36 md:w-40 px-4 md:px-6 py-4 text-right">
+        <div className="flex items-center justify-end space-x-1 sm:space-x-2">
           <button
             onClick={() => onDownload(object.Key!)}
             className="flex items-center justify-center p-2 sm:px-3 sm:py-1.5 rounded-lg transition-colors duration-200 touch-manipulation min-w-[36px] min-h-[36px] sm:min-w-0 sm:min-h-0 group"

@@ -24,41 +24,59 @@ export function FolderRow({
 
   return (
     <tr
-      className="cursor-pointer transition-colors duration-200"
-      style={{ borderBottomColor: token('color', 'primaryBorder') }}
+      className="cursor-pointer transition-all duration-200 hover:shadow-sm border-b"
+      style={{ 
+        borderBottomColor: token('color', 'primaryBorder'),
+        backgroundColor: isSelected ? token('color', 'overlayBg') : 'transparent'
+      }}
+      onClick={(e) => {
+        // Don't trigger if clicking on checkbox
+        if (isSelectMode && (e.target as HTMLInputElement).type === 'checkbox') {
+          return;
+        }
+        if (!isSelectMode) {
+          onPrefixClick(prefix.Prefix!);
+        }
+      }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.backgroundColor = token('color', 'hoverBg');
+        if (!isSelected) {
+          e.currentTarget.style.backgroundColor = token('color', 'hoverBg');
+        }
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.backgroundColor = 'transparent';
+        if (!isSelected) {
+          e.currentTarget.style.backgroundColor = 'transparent';
+        } else {
+          e.currentTarget.style.backgroundColor = token('color', 'overlayBg');
+        }
       }}
     >
       {isSelectMode && (
         <td className="w-12 px-4 py-4 md:px-6">
-          <input
-            type="checkbox"
-            checked={isSelected}
-            onChange={(e) => {
-              e.stopPropagation();
-              onItemSelection(prefix.Prefix!);
-            }}
-            className="w-5 h-5 md:w-4 md:h-4 text-blue-600 rounded focus:ring-blue-500 cursor-pointer"
-            style={{ 
-              backgroundColor: token('color', 'primaryBg'), 
-              borderColor: token('color', 'primaryBorder') 
-            }}
-          />
+          <div className="flex items-center justify-center">
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={(e) => {
+                e.stopPropagation();
+                onItemSelection(prefix.Prefix!);
+              }}
+              className="w-5 h-5 md:w-4 md:h-4 text-blue-600 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer transition-all"
+              style={{ 
+                backgroundColor: token('color', 'primaryBg'), 
+                borderColor: token('color', 'primaryBorder') 
+              }}
+            />
+          </div>
         </td>
       )}
-      <td 
-        className="px-4 md:px-6 py-4 touch-manipulation"
-        onClick={() => !isSelectMode && onPrefixClick(prefix.Prefix!)}
-      >
+      <td className="min-w-[200px] px-4 md:px-6 py-4 touch-manipulation">
         <div className="flex items-center space-x-3">
           <div 
-            className="w-8 h-8 rounded-lg flex items-center justify-center"
+            className="w-8 h-8 rounded-lg flex items-center justify-center shadow-sm"
             style={{ 
               backgroundColor: token('color', 'tertiaryBg'),
+              border: `1px solid ${token('color', 'primaryBorder')}`
             }}
           >
             <svg
@@ -81,9 +99,9 @@ export function FolderRow({
           </span>
         </div>
       </td>
-      <td className="px-4 md:px-6 py-4 hidden md:table-cell" style={{ color: token('color', 'mutedText') }}>—</td>
-      <td className="px-4 md:px-6 py-4 hidden lg:table-cell" style={{ color: token('color', 'mutedText') }}>—</td>
-      <td className="px-4 md:px-6 py-4" style={{ color: token('color', 'mutedText') }}>—</td>
+      <td className="w-32 sm:w-36 md:w-44 px-4 md:px-6 py-4 hidden md:table-cell" style={{ color: token('color', 'mutedText') }}>—</td>
+      <td className="w-24 sm:w-28 md:w-32 px-4 md:px-6 py-4 hidden lg:table-cell" style={{ color: token('color', 'mutedText') }}>—</td>
+      <td className="w-32 sm:w-36 md:w-40 px-4 md:px-6 py-4 text-right" style={{ color: token('color', 'mutedText') }}></td>
     </tr>
   );
 }

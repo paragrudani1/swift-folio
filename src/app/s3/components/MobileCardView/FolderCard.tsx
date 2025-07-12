@@ -27,6 +27,15 @@ export function FolderCard({
     <div
       className="p-4 cursor-pointer transition-colors duration-200 touch-manipulation"
       style={{ borderBottomColor: token('color', 'primaryBorder'), borderBottomWidth: '1px' }}
+      onClick={(e) => {
+        // Don't trigger if clicking on checkbox
+        if (isSelectMode && (e.target as HTMLInputElement).type === 'checkbox') {
+          return;
+        }
+        if (!isSelectMode) {
+          onPrefixClick(prefix.Prefix!);
+        }
+      }}
       onMouseEnter={(e) => {
         e.currentTarget.style.backgroundColor = token('color', 'hoverBg');
       }}
@@ -52,7 +61,6 @@ export function FolderCard({
         )}
         <div 
           className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 touch-manipulation"
-          onClick={() => !isSelectMode && onPrefixClick(prefix.Prefix!)}
           style={{ 
             backgroundColor: token('color', 'tertiaryBg'),
           }}
@@ -63,7 +71,6 @@ export function FolderCard({
         </div>
         <span 
           className="font-medium truncate"
-          onClick={() => !isSelectMode && onPrefixClick(prefix.Prefix!)}
           style={{ color: token('color', 'primaryText') }}
         >
           {folderName || "Unnamed Folder"}
