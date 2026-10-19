@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Themed-icon layer: same silhouette as the foreground in one colour. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M46,27 L58,27 L63,32 L63,43 L46,43 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M33,45 C36,50 72,50 75,45 L70.2,76.4 C69.8,79.2 67.5,81 64.8,81 L43.2,81 C40.5,81 38.2,79.2 37.8,76.4 Z" />
+</vector>

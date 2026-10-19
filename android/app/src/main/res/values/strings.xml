@@ -1,0 +1,263 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">Swift Folio</string>
+
+    <!-- Common actions -->
+    <string name="action_cancel">Cancel</string>
+    <string name="action_dismiss">Dismiss</string>
+    <string name="cancel">Cancel</string>
+    <string name="create">Create</string>
+    <string name="delete">Delete</string>
+    <string name="download">Download</string>
+    <string name="retry">Retry</string>
+    <string name="retry_now">Retry now</string>
+    <string name="hide">Hide</string>
+    <string name="go_up">Go up</string>
+    <string name="navigate_back">Navigate back</string>
+    <string name="unknown_value">Unknown</string>
+    <string name="percent">%1$d%%</string>
+
+    <!-- Connect -->
+    <string name="connect_eyebrow" translatable="false">SWIFT FOLIO · S3</string>
+    <string name="connect_title">Connect a bucket</string>
+    <string name="connect_subtitle">Keys stay on this device, encrypted with Android Keystore.</string>
+    <string name="connect_button">Connect</string>
+    <string name="connect_button_loading">HEAD s3://%1$s…</string>
+    <string name="connect_permissions_footer">Requires s3:ListBucket, GetObject, PutObject, DeleteObject</string>
+    <string name="connect_step_region">resolving region</string>
+    <string name="connect_step_signing">signing request</string>
+    <string name="connect_step_listing">listing bucket</string>
+    <string name="connect_switch_region">Switch to %1$s</string>
+    <string name="step_status_pending">Waiting</string>
+    <string name="step_status_running">In progress</string>
+    <string name="step_status_done">Done</string>
+    <string name="step_status_failed">Failed</string>
+    <string name="field_access_key">Access key ID</string>
+    <string name="field_access_key_helper">%1$d+ chars · %2$d/128</string>
+    <string name="field_secret_key">Secret access key</string>
+    <string name="field_secret_key_helper">%1$d+ chars</string>
+    <string name="field_bucket">Bucket</string>
+    <string name="field_region">Region</string>
+    <string name="field_valid">Valid</string>
+    <string name="show_secret">Show secret</string>
+    <string name="hide_secret">Hide secret</string>
+    <string name="remember_title">Remember on this device</string>
+    <string name="remember_subtitle">Auto-connect next launch</string>
+    <string name="theme_toggle_system">Theme: system. Tap to change</string>
+    <string name="theme_toggle_light">Theme: light. Tap to change</string>
+    <string name="theme_toggle_dark">Theme: dark. Tap to change</string>
+
+    <!-- Field validation -->
+    <string name="field_error_empty">Required</string>
+    <string name="field_error_too_short">Must be at least %1$d characters</string>
+    <string name="field_error_too_long">Must be at most %1$d characters</string>
+    <string name="field_error_invalid_chars">Contains characters that are not allowed</string>
+    <string name="field_error_uppercase">Bucket names are lowercase</string>
+    <string name="field_error_bad_edges">Must start and end with a letter or digit</string>
+    <string name="field_error_double_dots">Two dots in a row are not allowed</string>
+    <string name="field_error_ip">Must not look like an IP address</string>
+    <string name="field_error_reserved">Uses a prefix or suffix reserved by AWS</string>
+    <string name="field_error_slash">Slashes aren\'t allowed. Create one level at a time.</string>
+    <string name="field_error_dot_segment">“.” and “..” are not valid folder names</string>
+    <string name="field_error_exists">A folder with this name already exists</string>
+    <string name="field_error_key_too_long">The full key would exceed 1024 bytes</string>
+
+    <!-- Errors by kind -->
+    <string name="error_wrong_region_title">This bucket lives in another region</string>
+    <string name="error_wrong_region_hint">S3 redirected the request. Pick the bucket\'s region and connect again.</string>
+    <string name="error_bad_keys_title">AWS didn\'t accept these keys</string>
+    <string name="error_invalid_key_hint">Check the access key ID for typos.</string>
+    <string name="error_signature_hint">The secret access key doesn\'t match the access key ID.</string>
+    <string name="error_expired_title">These credentials have expired</string>
+    <string name="error_expired_hint">Create a new access key in IAM and connect again.</string>
+    <string name="error_clock_title">Device clock is off</string>
+    <string name="error_clock_hint">Requests are signed with the current time. Set the date and time to automatic.</string>
+    <string name="error_no_bucket_title">No bucket with this name</string>
+    <string name="error_no_bucket_hint">Check the bucket name and the account the keys belong to.</string>
+    <string name="error_not_found_title">Not found</string>
+    <string name="error_not_found_hint">The object may have been deleted. Refresh the folder.</string>
+    <string name="error_access_denied_title">No permission for this action</string>
+    <string name="error_access_denied_hint">The keys work, but their IAM policy does not allow this request.</string>
+    <string name="error_timeout_title">AWS took too long to answer</string>
+    <string name="error_network_title">Can\'t reach AWS</string>
+    <string name="error_network_hint">Check your connection and try again.</string>
+    <string name="error_service_title">S3 is busy right now</string>
+    <string name="error_service_hint">Wait a moment and try again.</string>
+    <string name="error_unknown_title">Something went wrong</string>
+    <string name="error_unknown_hint">Try again. If it keeps failing, the code below helps with support.</string>
+
+    <!-- Browser -->
+    <string name="open_settings">Settings</string>
+    <string name="status_connected">Connected</string>
+    <string name="status_connecting">Connecting</string>
+    <string name="storage_computing">Σ …</string>
+    <string name="storage_total">Σ %1$s · %2$s</string>
+    <string name="storage_unavailable">Σ n/a</string>
+    <string name="refresh_storage">Recompute bucket size</string>
+    <string name="section_folders">Folders</string>
+    <string name="section_files">Files</string>
+    <string name="section_header">%1$s · %2$d</string>
+    <string name="folder_meta">folder</string>
+    <string name="file_actions">Actions for %1$s</string>
+    <string name="select_item">Select</string>
+    <string name="select_all">Select all</string>
+    <string name="clear_selection">Clear</string>
+    <string name="exit_selection">Exit selection</string>
+    <string name="empty_folder">This folder is empty</string>
+    <string name="empty_bucket">Bucket is empty</string>
+    <string name="no_matches">No matches for “%1$s”</string>
+    <string name="no_matches_hint">Search covers the current folder only.</string>
+    <string name="filter_files_only">Files only</string>
+    <string name="filter_folders_only">Folders only</string>
+    <string name="up_to_parent">Up to parent folder</string>
+    <string name="search_folder">Filter this folder</string>
+    <string name="search_placeholder">Filter this folder</string>
+    <string name="close_search">Close search</string>
+    <string name="clear_search">Clear search</string>
+    <string name="new_folder">New folder</string>
+    <string name="upload_files">Upload files</string>
+    <string name="show_uploads">Show uploads, %1$d%% done</string>
+    <string name="copy_keys">Copy keys</string>
+    <string name="copy_key">Copy key</string>
+    <string name="copy_s3_uri">Copy s3:// URI</string>
+    <string name="copy_prefix">Copy prefix</string>
+    <string name="copy_bucket_uri">Copy bucket URI</string>
+    <string name="jump_to_folder">Open folder</string>
+    <string name="show_full_path">Show full path</string>
+    <string name="path_jump_title">Path</string>
+    <string name="credentials_rejected_title">Credentials rejected</string>
+    <string name="edit_credentials">Edit credentials</string>
+
+    <!-- Sort -->
+    <string name="sort_title">Sort by</string>
+    <string name="sort_name">Name</string>
+    <string name="sort_modified">Modified</string>
+    <string name="sort_size">Size</string>
+    <string name="sort_ascending">Ascending</string>
+    <string name="sort_descending">Descending</string>
+
+    <!-- File details -->
+    <string name="details_size">Size</string>
+    <string name="details_modified">Modified</string>
+    <string name="details_type">Type</string>
+    <string name="kind_folder">Folder</string>
+    <string name="kind_image">Image</string>
+    <string name="kind_video">Video</string>
+    <string name="kind_audio">Audio</string>
+    <string name="kind_pdf">PDF</string>
+    <string name="kind_document">Document</string>
+    <string name="kind_archive">Archive</string>
+    <string name="kind_code">Code</string>
+    <string name="kind_text">Text</string>
+    <string name="kind_other">File</string>
+
+    <!-- New folder -->
+    <string name="folder_name">Folder name</string>
+    <string name="folder_name_trimmed">Leading and trailing spaces will be removed</string>
+
+    <!-- Delete -->
+    <string name="delete_file_title">Delete file?</string>
+    <string name="delete_cannot_undo">This can\'t be undone. S3 has no trash unless versioning is on.</string>
+    <string name="delete_progress">%1$d / %2$d</string>
+    <string name="hold_to_delete">Hold to delete</string>
+    <string name="and_more">+ %1$d more</string>
+
+    <!-- Uploads -->
+    <string name="uploading_to">Uploading to</string>
+    <string name="cancel_all">Cancel all</string>
+    <string name="cancel_upload">Cancel %1$s</string>
+    <string name="upload_stats">%1$s / %2$s · %3$s</string>
+    <string name="add_more_files">Add more files</string>
+    <string name="clear_finished">Clear finished</string>
+    <string name="upload_done">Uploaded</string>
+    <string name="status_queued">Queued</string>
+    <string name="status_failed">Failed · %1$s</string>
+
+    <!-- Messages -->
+    <string name="message_deleted_partially">%1$d deleted · %2$d failed</string>
+    <string name="message_folder_created">Created folder %1$s</string>
+    <string name="message_nothing_to_upload">None of the picked files could be read</string>
+    <string name="message_copied">Copied %1$s</string>
+    <string name="message_failed">%1$s · %2$s</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_connection">Connection</string>
+    <string name="settings_connection_detail">%1$s · access key %2$s</string>
+    <string name="not_connected">Not connected</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="theme_system">System</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="settings_storage">Storage</string>
+    <string name="settings_remember_detail">Turning this off deletes the saved keys immediately</string>
+    <string name="settings_download_folder">Download folder</string>
+    <string name="settings_download_folder_value" translatable="false">Download/SwiftFolio</string>
+    <string name="settings_about">About</string>
+    <string name="settings_version">Version</string>
+    <string name="settings_licenses">Licenses</string>
+    <string name="settings_licenses_detail">Inter and JetBrains Mono, SIL Open Font License 1.1. AWS SDK for Kotlin, Apache 2.0.</string>
+    <string name="sign_out">Sign out</string>
+    <string name="sign_out_title">Sign out of %1$s?</string>
+    <string name="sign_out_forget">Also forget saved credentials</string>
+
+    <!-- Notifications -->
+    <string name="notification_channel_transfers">Transfers</string>
+    <string name="notification_channel_transfers_description">Upload and download progress</string>
+    <string name="notification_uploading">Uploading %1$d of %2$d</string>
+    <string name="notification_downloading">Downloading %1$d of %2$d</string>
+    <string name="notification_progress_text">%1$d%% complete</string>
+
+    <plurals name="selected_count">
+        <item quantity="one">%1$d selected</item>
+        <item quantity="other">%1$d selected</item>
+    </plurals>
+    <plurals name="object_count">
+        <item quantity="one">%1$d object</item>
+        <item quantity="other">%1$d objects</item>
+    </plurals>
+    <plurals name="search_matches">
+        <item quantity="one">%1$d match in %2$s</item>
+        <item quantity="other">%1$d matches in %2$s</item>
+    </plurals>
+    <plurals name="delete_items_title">
+        <item quantity="one">Delete %1$d item?</item>
+        <item quantity="other">Delete %1$d items?</item>
+    </plurals>
+    <plurals name="delete_includes_folders">
+        <item quantity="one">Includes %1$d folder. Everything inside it will be deleted.</item>
+        <item quantity="other">Includes %1$d folders. Everything inside them will be deleted.</item>
+    </plurals>
+    <plurals name="files_progress">
+        <item quantity="one">%1$d of %2$d file</item>
+        <item quantity="other">%1$d of %2$d files</item>
+    </plurals>
+    <plurals name="message_deleted">
+        <item quantity="one">Deleted %1$d item</item>
+        <item quantity="other">Deleted %1$d items</item>
+    </plurals>
+    <plurals name="message_uploads_queued">
+        <item quantity="one">%1$d file queued for upload</item>
+        <item quantity="other">%1$d files queued for upload</item>
+    </plurals>
+    <plurals name="message_downloads_queued">
+        <item quantity="one">Downloading %1$d file to Downloads/SwiftFolio</item>
+        <item quantity="other">Downloading %1$d files to Downloads/SwiftFolio</item>
+    </plurals>
+    <plurals name="message_uploads_finished">
+        <item quantity="one">%1$d file uploaded to %2$s</item>
+        <item quantity="other">%1$d files uploaded to %2$s</item>
+    </plurals>
+    <plurals name="notification_uploaded">
+        <item quantity="one">%1$d file uploaded</item>
+        <item quantity="other">%1$d files uploaded</item>
+    </plurals>
+    <plurals name="notification_downloaded">
+        <item quantity="one">%1$d file saved to Downloads</item>
+        <item quantity="other">%1$d files saved to Downloads</item>
+    </plurals>
+    <plurals name="notification_failed_count">
+        <item quantity="one">%1$d failed</item>
+        <item quantity="other">%1$d failed</item>
+    </plurals>
+</resources>

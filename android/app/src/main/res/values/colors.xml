@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Window and splash background; Compose draws the real Console canvas on top. -->
+    <color name="canvas">#FFF3F5F9</color>
+    <color name="ic_launcher_background">#FF07090E</color>
+</resources>
