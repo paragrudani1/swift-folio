@@ -4,6 +4,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
@@ -40,7 +41,15 @@ fun SwiftFolioNavHost(container: AppContainer, startRoute: String, appVersion: S
             })
         }
         composable(Routes.BROWSER) {
-            val viewModel = viewModel { BrowserViewModel(container.sessionManager, container.transferScheduler) }
+            val viewModel = viewModel {
+                BrowserViewModel(
+                    sessionManager = container.sessionManager,
+                    transferScheduler = container.transferScheduler,
+                    useCases = container.browserUseCases(),
+                    signOut = container.signOut,
+                    savedState = createSavedStateHandle(),
+                )
+            }
             BrowserScreen(
                 viewModel = viewModel,
                 onOpenSettings = { navController.navigate(Routes.SETTINGS) },
@@ -48,7 +57,7 @@ fun SwiftFolioNavHost(container: AppContainer, startRoute: String, appVersion: S
             )
         }
         composable(Routes.SETTINGS) {
-            val viewModel = viewModel { SettingsViewModel(container.sessionManager, container.settingsStore, appVersion) }
+            val viewModel = viewModel { SettingsViewModel(container.sessionManager, container.settingsStore, container.signOut, appVersion) }
             SettingsScreen(viewModel, onBack = { navController.popBackStack() }, onSignedOut = { navController.navigateToConnect() })
         }
     }

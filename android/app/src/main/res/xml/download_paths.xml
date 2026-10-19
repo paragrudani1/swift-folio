@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Folders whose files DownloadTargetFactory shares on API 26-28 (keep in sync with DownloadTargets.kt). -->
+<paths>
+    <!-- Public Download/SwiftFolio (with WRITE_EXTERNAL_STORAGE). -->
+    <external-path
+        name="public_downloads"
+        path="Download/SwiftFolio/" />
+    <!-- The app's external Downloads folder (without the permission). -->
+    <external-files-path
+        name="app_downloads"
+        path="Download/SwiftFolio/" />
+    <!-- Internal fallback when external storage is unavailable. -->
+    <files-path
+        name="internal_downloads"
+        path="SwiftFolio/" />
+</paths>

@@ -55,18 +55,22 @@ class TransferNotifications(private val context: Context) {
         }
     }
 
-    /** Posts the completion notification, if the user allows notifications. */
+    /**
+     * Posts the completion notification, if the user allows notifications. Downloads are
+     * described by where they were saved ([downloadLocation]); a single saved file opens on tap.
+     */
     @SuppressLint("MissingPermission") // Guarded by canPostNotifications() right above the notify call.
-    fun showFinished(manifest: TransferManifest, result: BatchResult) {
+    fun showFinished(manifest: TransferManifest, snapshot: BatchSnapshot, downloadLocation: DownloadLocation) {
         if (!canPostNotifications()) return
-        val done = result.snapshot.statuses.count { it == TransferItemStatus.DONE }
-        val failed = result.snapshot.statuses.count { it == TransferItemStatus.FAILED }
+        val done = snapshot.items.count { it.status == TransferItemStatus.DONE }
+        val failed = snapshot.items.count { it.status == TransferItemStatus.FAILED }
+        val savedUri = snapshot.items.mapNotNull { it.savedUri }.singleOrNull()
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_transfer)
-            .setContentTitle(finishedTitle(manifest.kind, done))
+            .setContentTitle(finishedTitle(manifest.kind, downloadLocation, done))
             .setContentText(context.resources.getQuantityString(R.plurals.notification_failed_count, failed, failed).takeIf { failed > 0 })
             .setAutoCancel(true)
-            .setContentIntent(result.savedUris.singleOrNull()?.let(::viewFileIntent) ?: openAppIntent())
+            .setContentIntent(savedUri?.let { viewFileIntent(Uri.parse(it)) } ?: openAppIntent())
             .build()
         NotificationManagerCompat.from(context).notify(finishedId(manifest.batchId), notification)
     }
@@ -83,8 +87,12 @@ class TransferNotifications(private val context: Context) {
         return context.getString(res, current, manifest.items.size)
     }
 
-    private fun finishedTitle(kind: TransferKind, done: Int): String {
-        val res = if (kind == TransferKind.UPLOAD) R.plurals.notification_uploaded else R.plurals.notification_downloaded
+    private fun finishedTitle(kind: TransferKind, location: DownloadLocation, done: Int): String {
+        val res = when {
+            kind == TransferKind.UPLOAD -> R.plurals.notification_uploaded
+            location == DownloadLocation.PUBLIC_DOWNLOADS -> R.plurals.notification_downloaded
+            else -> R.plurals.notification_downloaded_app_storage
+        }
         return context.resources.getQuantityString(res, done, done)
     }
 

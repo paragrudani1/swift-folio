@@ -1,6 +1,9 @@
 package io.swiftfolio.app.ui
 
+import androidx.lifecycle.SavedStateHandle
 import io.swiftfolio.app.MainDispatcherRule
+import io.swiftfolio.app.bucket.BrowserUseCases
+import io.swiftfolio.app.bucket.StorageState
 import io.swiftfolio.app.data.StorageUsage
 import io.swiftfolio.app.fakes.FakeCredentialStore
 import io.swiftfolio.app.fakes.FakeS3Repository
@@ -8,6 +11,7 @@ import io.swiftfolio.app.fakes.FakeS3RepositoryFactory
 import io.swiftfolio.app.fakes.FakeSettingsStore
 import io.swiftfolio.app.fakes.FakeTransferScheduler
 import io.swiftfolio.app.fakes.TestData
+import io.swiftfolio.app.session.CancelTransfersAndSignOut
 import io.swiftfolio.app.session.SessionManager
 import io.swiftfolio.app.transfer.TransferBatch
 import io.swiftfolio.app.transfer.TransferItem
@@ -21,18 +25,20 @@ import io.swiftfolio.app.ui.browser.BrowserSheet
 import io.swiftfolio.app.ui.browser.BrowserViewModel
 import io.swiftfolio.app.ui.browser.CommandMode
 import io.swiftfolio.app.ui.browser.ListingState
-import io.swiftfolio.app.ui.browser.StorageState
+import io.swiftfolio.app.ui.browser.QueueHeading
 import io.swiftfolio.core.ConnectError
 import io.swiftfolio.core.ConnectErrorKind
 import io.swiftfolio.core.FieldError
 import io.swiftfolio.core.S3Result
 import io.swiftfolio.core.SortDirection
 import io.swiftfolio.core.SortField
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -50,9 +56,17 @@ class BrowserViewModelTest {
     private val sessionManager = SessionManager(credentials, FakeSettingsStore(), FakeS3RepositoryFactory { repository })
     private val scheduler = FakeTransferScheduler()
 
-    private suspend fun connectedViewModel(): BrowserViewModel {
+    private fun viewModel(savedState: SavedStateHandle = SavedStateHandle()) = BrowserViewModel(
+        sessionManager = sessionManager,
+        transferScheduler = scheduler,
+        useCases = BrowserUseCases.create(sessionManager),
+        signOut = CancelTransfersAndSignOut(sessionManager, scheduler),
+        savedState = savedState,
+    )
+
+    private suspend fun connectedViewModel(savedState: SavedStateHandle = SavedStateHandle()): BrowserViewModel {
         sessionManager.connect(TestData.config, remember = false) { _, _ -> }
-        return BrowserViewModel(sessionManager, scheduler)
+        return viewModel(savedState)
     }
 
     private fun TestScope.effectsOf(viewModel: BrowserViewModel): List<BrowserEffect> {
@@ -60,6 +74,15 @@ class BrowserViewModelTest {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.effects.toList(effects) }
         return effects
     }
+
+    private fun upload(status: TransferItemStatus, bytes: Long, isActive: Boolean) = TransferBatch(
+        id = "b1",
+        kind = TransferKind.UPLOAD,
+        bucket = TestData.BUCKET,
+        prefix = "",
+        items = listOf(TransferItem("a.txt", "a.txt", 10, bytes, status)),
+        isActive = isActive,
+    )
 
     @Test fun `binds the session, shows the root and the storage total`() = runTest {
         val vm = connectedViewModel()
@@ -71,15 +94,35 @@ class BrowserViewModelTest {
     }
 
     @Test fun `no session and nothing saved sends the user to Connect`() = runTest {
-        val vm = BrowserViewModel(sessionManager, scheduler)
+        val vm = viewModel()
         val effects = effectsOf(vm)
         assertEquals(listOf(BrowserEffect.NavigateToConnect), effects)
     }
 
     @Test fun `remembered credentials auto connect`() = runTest {
         credentials.saved = TestData.config
-        val vm = BrowserViewModel(sessionManager, scheduler)
+        val vm = viewModel()
         assertTrue(vm.state.value.isConnected)
+    }
+
+    @Test fun `the open folder survives process death`() = runTest {
+        val savedState = SavedStateHandle()
+        connectedViewModel(savedState).onAction(BrowserAction.RowTapped(TestData.photos))
+        val recreated = viewModel(savedState)
+        assertEquals("photos/", recreated.state.value.prefix)
+        assertEquals(ListingState.Loaded(TestData.photosListing), recreated.state.value.listing)
+    }
+
+    @Test fun `files picked before the session is bound wait for it`() = runTest {
+        credentials.saved = TestData.config
+        val gate = CompletableDeferred<Unit>()
+        repository.verifyGate = gate
+        val vm = viewModel()
+        vm.onAction(BrowserAction.FilesPicked(listOf("content://a")))
+        assertTrue(scheduler.uploadRequests.isEmpty())
+        gate.complete(Unit)
+        advanceUntilIdle()
+        assertEquals(Triple(TestData.BUCKET, "", listOf("content://a")), scheduler.uploadRequests.single())
     }
 
     @Test fun `folders open on tap and back walks up then stops`() = runTest {
@@ -126,19 +169,22 @@ class BrowserViewModelTest {
         vm.onAction(BrowserAction.RowTapped(TestData.photos))
         assertTrue(vm.state.value.selectionHasFolders)
         vm.onAction(BrowserAction.RowTapped(TestData.photos))
+        assertFalse(vm.state.value.isAllSelected)
         vm.onAction(BrowserAction.SelectAll)
         assertEquals(3, vm.state.value.selection.size)
+        assertTrue(vm.state.value.isAllSelected)
         vm.onAction(BrowserAction.Back)
         assertTrue(vm.state.value.selection.isEmpty())
     }
 
-    @Test fun `bulk delete asks first, then deletes, reports and reloads`() = runTest {
+    @Test fun `bulk delete asks first, then deletes, reports and reloads without rescanning`() = runTest {
         val vm = connectedViewModel()
         vm.onAction(BrowserAction.RowLongPressed(TestData.readme))
         vm.onAction(BrowserAction.RowTapped(TestData.docs))
         vm.onAction(BrowserAction.DeleteSelection)
         val sheet = vm.state.value.sheet as BrowserSheet.ConfirmDelete
         assertEquals(1, sheet.folderCount)
+        assertTrue(sheet.needsHoldToConfirm)
         assertTrue(repository.deletedIds.isEmpty())
         val listsBefore = repository.listCalls.size
         vm.onAction(BrowserAction.ConfirmDelete)
@@ -146,6 +192,14 @@ class BrowserViewModelTest {
         assertEquals(BrowserMessage.Deleted(2), vm.state.value.message)
         assertEquals(CommandMode.Browse, vm.state.value.mode)
         assertTrue(repository.listCalls.size > listsBefore)
+        assertEquals(1, repository.storageCalls)
+        assertEquals(StorageState.Ready(StorageUsage(4_000, 0)), vm.state.value.storage)
+    }
+
+    @Test fun `deleting one file needs no hold`() = runTest {
+        val vm = connectedViewModel()
+        vm.onAction(BrowserAction.RequestDelete(listOf("README.md")))
+        assertFalse((vm.state.value.sheet as BrowserSheet.ConfirmDelete).needsHoldToConfirm)
     }
 
     @Test fun `partial delete failures are reported`() = runTest {
@@ -168,6 +222,7 @@ class BrowserViewModelTest {
         assertEquals(listOf("invoices/"), repository.createdPrefixes)
         assertEquals(BrowserMessage.FolderCreated("invoices"), vm.state.value.message)
         assertNull(vm.state.value.sheet)
+        assertEquals(1, repository.storageCalls)
     }
 
     @Test fun `rejected credentials raise the blocking dialog`() = runTest {
@@ -179,6 +234,15 @@ class BrowserViewModelTest {
         assertEquals(TestData.root, vm.state.value.entries)
     }
 
+    @Test fun `signing out from the dialog cancels transfers and leaves`() = runTest {
+        val vm = connectedViewModel()
+        val effects = effectsOf(vm)
+        vm.onAction(BrowserAction.SignOut)
+        assertEquals(TransferKind.entries.toList(), scheduler.cancelledKinds)
+        assertNull(sessionManager.session.value)
+        assertEquals(listOf(BrowserEffect.NavigateToConnect), effects)
+    }
+
     @Test fun `uploads go to the scheduler for the current folder`() = runTest {
         val vm = connectedViewModel()
         vm.onAction(BrowserAction.RowTapped(TestData.photos))
@@ -187,18 +251,38 @@ class BrowserViewModelTest {
         assertEquals(BrowserMessage.UploadsQueued(2), vm.state.value.message)
     }
 
-    @Test fun `finished upload batch refreshes the folder`() = runTest {
+    @Test fun `finished upload batch refreshes the folder and adds to the total without rescanning`() = runTest {
         val vm = connectedViewModel()
-        val item = TransferItem("a.txt", "a.txt", 10, 0, TransferItemStatus.RUNNING)
-        val running = TransferBatch("b1", TransferKind.UPLOAD, TestData.BUCKET, "", listOf(item), isActive = true)
-        scheduler.queueState.value = TransferQueue(listOf(running))
-        assertEquals(0, vm.state.value.uploadProgress?.percent)
+        scheduler.queueState.value = TransferQueue(listOf(upload(TransferItemStatus.RUNNING, bytes = 0, isActive = true)))
+        assertTrue(vm.state.value.transferQueue.isActive)
+        assertEquals(0, vm.state.value.transferQueue.progress.percent)
         val listsBefore = repository.listCalls.size
-        val done = running.copy(items = listOf(item.copy(bytesDone = 10, status = TransferItemStatus.DONE)), isActive = false)
-        scheduler.queueState.value = TransferQueue(listOf(done))
+        scheduler.queueState.value = TransferQueue(listOf(upload(TransferItemStatus.DONE, bytes = 10, isActive = false)))
         assertEquals(BrowserMessage.UploadsFinished(1, ""), vm.state.value.message)
         assertTrue(repository.listCalls.size > listsBefore)
-        assertNull(vm.state.value.uploadProgress)
+        assertFalse(vm.state.value.transferQueue.isActive)
+        assertEquals(StorageState.Ready(StorageUsage(4_130, 3)), vm.state.value.storage)
+        assertEquals(1, repository.storageCalls)
+    }
+
+    @Test fun `downloads show in the transfer queue`() = runTest {
+        val vm = connectedViewModel()
+        val download = upload(TransferItemStatus.RUNNING, bytes = 5, isActive = true).copy(kind = TransferKind.DOWNLOAD)
+        scheduler.queueState.value = TransferQueue(listOf(download))
+        val queue = vm.state.value.transferQueue
+        assertEquals(QueueHeading.Downloading, queue.heading)
+        assertEquals(TransferKind.DOWNLOAD, queue.rows.single().kind)
+        assertEquals(50, queue.progress.percent)
+    }
+
+    @Test fun `queue actions reach the scheduler`() = runTest {
+        val vm = connectedViewModel()
+        vm.onAction(BrowserAction.CancelTransfer("b1", 2))
+        vm.onAction(BrowserAction.CancelAllTransfers)
+        vm.onAction(BrowserAction.ClearFinishedTransfers)
+        assertEquals(listOf("b1" to 2), scheduler.cancelledItems)
+        assertEquals(TransferKind.entries.toList(), scheduler.cancelledKinds)
+        assertEquals(1, scheduler.clearedFinished)
     }
 
     @Test fun `downloads skip folders and leave selection mode`() = runTest {
@@ -208,5 +292,6 @@ class BrowserViewModelTest {
         vm.onAction(BrowserAction.DownloadSelection)
         assertEquals(TestData.BUCKET to listOf("README.md"), scheduler.downloadRequests.single())
         assertEquals(CommandMode.Browse, vm.state.value.mode)
+        assertEquals(BrowserMessage.DownloadsQueued(1), vm.state.value.message)
     }
 }

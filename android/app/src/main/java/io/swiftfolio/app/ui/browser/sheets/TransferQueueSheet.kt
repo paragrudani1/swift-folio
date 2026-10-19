@@ -27,8 +27,9 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.swiftfolio.app.R
-import io.swiftfolio.app.transfer.TransferBatch
 import io.swiftfolio.app.ui.browser.BrowserAction
+import io.swiftfolio.app.ui.browser.QueueHeading
+import io.swiftfolio.app.ui.browser.TransferQueueSummary
 import io.swiftfolio.app.ui.components.StatusChip
 import io.swiftfolio.app.ui.theme.ConsoleTheme
 import io.swiftfolio.app.ui.theme.Spacing
@@ -38,25 +39,20 @@ import io.swiftfolio.core.TransferProgress
 private val OverallBarHeight = 6.dp
 private val QueueMaxHeight = 360.dp
 
-/** Upload queue: destination, overall progress, per-file rows, and queue actions. */
+/** Transfer queue: heading, overall progress, per-file rows (uploads and downloads), and queue actions. */
 @Composable
-internal fun UploadQueueSheet(
-    batches: List<TransferBatch>,
-    prefix: String,
+internal fun TransferQueueSheet(
+    queue: TransferQueueSummary,
     onAction: (BrowserAction) -> Unit,
     onPickFiles: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val active = batches.filter { it.isActive }
-    val shown = active.ifEmpty { batches }
-    val items = shown.flatMap { batch -> batch.items.mapIndexed { index, item -> UploadRowModel(batch.id, index, item) } }
-    val progress = TransferProgress.of(items.map { it.item.bytesDone to it.item.sizeBytes }, items.count { it.item.status.isTerminal })
     ConsoleSheet(onDismiss = onDismiss) {
-        QueueHeader(destination = "/" + (shown.lastOrNull()?.prefix ?: prefix), canCancel = active.isNotEmpty(), onCancelAll = { onAction(BrowserAction.CancelAllUploads) })
-        OverallProgress(progress)
+        QueueHeader(queue.heading, canCancel = queue.isActive, onCancelAll = { onAction(BrowserAction.CancelAllTransfers) })
+        OverallProgress(queue.progress)
         LazyColumn(Modifier.heightIn(max = QueueMaxHeight)) {
-            items(items, key = { "${it.batchId}-${it.index}" }) { row ->
-                UploadRow(row, onCancel = { onAction(BrowserAction.CancelUpload(row.batchId, row.index)) })
+            items(queue.rows, key = { "${it.batchId}-${it.index}" }) { row ->
+                TransferRow(row, onCancel = { onAction(BrowserAction.CancelTransfer(row.batchId, row.index)) })
             }
         }
         Row(
@@ -66,22 +62,31 @@ internal fun UploadQueueSheet(
         ) {
             OutlinedButton(onClick = onPickFiles) { Text(stringResource(R.string.add_more_files)) }
             Spacer(Modifier.weight(1f))
-            TextButton(onClick = { onAction(BrowserAction.ClearFinishedUploads) }) { Text(stringResource(R.string.clear_finished)) }
+            if (queue.hasFinished) {
+                TextButton(onClick = { onAction(BrowserAction.ClearFinishedTransfers) }) { Text(stringResource(R.string.clear_finished)) }
+            }
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.hide)) }
         }
     }
 }
 
 @Composable
-private fun QueueHeader(destination: String, canCancel: Boolean, onCancelAll: () -> Unit) {
+private fun QueueHeader(heading: QueueHeading, canCancel: Boolean, onCancelAll: () -> Unit) {
     val colors = ConsoleTheme.colors
     Row(
         modifier = Modifier.fillMaxWidth().padding(start = Spacing.space6, end = Spacing.space2),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Spacing.space2),
     ) {
-        Text(stringResource(R.string.uploading_to), style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
-        StatusChip(text = destination, modifier = Modifier.weight(1f, fill = false), textColor = colors.textPrimary)
+        val title = when (heading) {
+            is QueueHeading.UploadingTo -> R.string.uploading_to
+            QueueHeading.Downloading -> R.string.queue_downloads
+            QueueHeading.Transfers -> R.string.queue_transfers
+        }
+        Text(stringResource(title), style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
+        if (heading is QueueHeading.UploadingTo) {
+            StatusChip(text = "/" + heading.prefix, modifier = Modifier.weight(1f, fill = false), textColor = colors.textPrimary)
+        }
         Spacer(Modifier.weight(1f))
         if (canCancel) {
             TextButton(onClick = onCancelAll) { Text(stringResource(R.string.cancel_all), color = colors.error) }

@@ -12,7 +12,7 @@ import io.swiftfolio.app.ui.browser.sheets.FileDetailsSheet
 import io.swiftfolio.app.ui.browser.sheets.NewFolderSheet
 import io.swiftfolio.app.ui.browser.sheets.PathJumpSheet
 import io.swiftfolio.app.ui.browser.sheets.SortSheet
-import io.swiftfolio.app.ui.browser.sheets.UploadQueueSheet
+import io.swiftfolio.app.ui.browser.sheets.TransferQueueSheet
 import io.swiftfolio.app.ui.theme.ConsoleTheme
 
 /** Renders the open sheet or dialog. One `when` over the sealed [BrowserSheet]. */
@@ -28,7 +28,7 @@ internal fun BrowserOverlays(
         null -> Unit
         BrowserSheet.Sort -> SortSheet(state.sortOrder, onSelect = { onAction(BrowserAction.SortSelected(it)) }, onDismiss = dismiss)
         BrowserSheet.PathJump -> PathJumpSheet(state.allCrumbs, state.bucket, onJump = { onAction(BrowserAction.JumpTo(it)) }, onCopy = onCopy, onDismiss = dismiss)
-        BrowserSheet.Uploads -> UploadQueueSheet(state.uploadBatches, state.prefix, onAction, onPickFiles, onDismiss = dismiss)
+        BrowserSheet.Transfers -> TransferQueueSheet(state.transferQueue, onAction, onPickFiles, onDismiss = dismiss)
         is BrowserSheet.FileDetails -> FileDetailsSheet(sheet.file, state.bucket, onAction, onCopy, onDismiss = dismiss)
         is BrowserSheet.NewFolder -> NewFolderSheet(sheet, state.bucket, state.prefix, state.newFolderError, onAction, onDismiss = dismiss)
         is BrowserSheet.ConfirmDelete -> DeleteConfirmDialog(sheet, onConfirm = { onAction(BrowserAction.ConfirmDelete) }, onDismiss = dismiss)

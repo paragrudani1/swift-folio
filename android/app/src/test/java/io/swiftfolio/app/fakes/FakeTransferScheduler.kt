@@ -22,11 +22,12 @@ class FakeTransferScheduler : TransferScheduler {
         return readableUploads ?: uris.size
     }
 
-    override suspend fun enqueueDownloads(bucket: String, keys: List<String>) {
+    override suspend fun enqueueDownloads(bucket: String, keys: List<String>): Int {
         downloadRequests += bucket to keys
+        return keys.size
     }
 
-    override fun cancelAll(kind: TransferKind) {
+    override suspend fun cancelAll(kind: TransferKind) {
         cancelledKinds += kind
     }
 
@@ -34,7 +35,7 @@ class FakeTransferScheduler : TransferScheduler {
         cancelledItems += batchId to itemIndex
     }
 
-    override fun clearFinished() {
+    override suspend fun clearFinished() {
         clearedFinished++
     }
 }

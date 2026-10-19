@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.swiftfolio.app.data.SettingsStore
 import io.swiftfolio.app.session.SessionManager
+import io.swiftfolio.app.session.SignOut
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,10 +15,11 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/** Settings state holder; persistence goes through [SettingsStore] and [SessionManager]. */
+/** Settings state holder; persistence goes through [SettingsStore] and [SessionManager], sign-out through [SignOut]. */
 class SettingsViewModel(
     private val sessionManager: SessionManager,
     private val settingsStore: SettingsStore,
+    private val signOut: SignOut,
     appVersion: String,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(SettingsUiState(appVersion = appVersion))
@@ -55,15 +57,15 @@ class SettingsViewModel(
             SettingsAction.RequestSignOut -> mutableState.update { it.copy(signOutDialog = SignOutDialog(forgetCredentials = it.rememberCredentials)) }
             is SettingsAction.ForgetOnSignOutChanged -> mutableState.update { it.copy(signOutDialog = it.signOutDialog?.copy(forgetCredentials = action.forget)) }
             SettingsAction.DismissSignOut -> mutableState.update { it.copy(signOutDialog = null) }
-            SettingsAction.ConfirmSignOut -> signOut()
+            SettingsAction.ConfirmSignOut -> confirmSignOut()
         }
     }
 
-    private fun signOut() {
+    private fun confirmSignOut() {
         val forget = state.value.signOutDialog?.forgetCredentials ?: false
         mutableState.update { it.copy(signOutDialog = null) }
         viewModelScope.launch {
-            sessionManager.signOut(forgetCredentials = forget)
+            signOut(forgetCredentials = forget)
             effectChannel.send(SettingsEffect.NavigateToConnect)
         }
     }

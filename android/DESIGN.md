@@ -49,7 +49,8 @@ Material 3 roles are mapped from the tokens (`primary = accentStart`, `surfaceCo
 ## Components (`ui/components`, `ui/browser`)
 
 - **Command bar:** a 64dp floating glass bar with three modes, modelled by the sealed `CommandMode`:
-  - Browse: up, filter pill, new folder, and a gradient upload button that morphs into a progress chip.
+  - Browse: up, filter pill, new folder, and a gradient upload button that morphs into a progress chip while any
+    upload or download runs (tapping it opens the transfer queue).
   - Search: close, auto-focused mono input, clear.
   - Select: Download, Copy keys, and Delete on an error-tinted slab.
 - **Path pill:** a floating breadcrumb pill. It shows `bucket / … / parent / current` (`core.Breadcrumbs`), tapping a segment
@@ -61,7 +62,8 @@ Material 3 roles are mapped from the tokens (`primary = accentStart`, `surfaceCo
   pops on a spring (0.55 damping). That spring is the only bouncy motion in the app.
 - **States:** skeleton rows with a diagonal shimmer, a 2dp indeterminate gradient activity line, and a quiet pull line
   (Colophon). Empty, no-results and error screens use a 72dp glass badge. Stale rows dim to 70% under a warning banner.
-- **Sheets and dialogs:** opaque glass3 `ModalBottomSheet`s (sort, path, upload queue, file details, new folder).
+- **Sheets and dialogs:** opaque glass3 `ModalBottomSheet`s (sort, path, transfer queue for uploads and downloads,
+  file details, new folder).
   The delete dialog uses hold-to-confirm (600ms fill) for 50 or more items or any folder, and exposes a direct
   accessibility action. Swipe-to-delete does not exist.
 - **Connect:** a glass credential card with mono fields that validate after blur, an exposed region dropdown, and a Remember

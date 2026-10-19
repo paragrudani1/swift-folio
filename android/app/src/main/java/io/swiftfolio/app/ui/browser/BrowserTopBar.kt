@@ -78,7 +78,7 @@ internal fun BrowserTopBar(
 @Composable
 private fun SelectionTopBar(state: BrowserUiState, onAction: (BrowserAction) -> Unit) {
     val colors = ConsoleTheme.colors
-    val allSelected = state.selection.size == state.visibleEntries.size && state.visibleEntries.isNotEmpty()
+    val allSelected = state.isAllSelected
     TopAppBar(
         navigationIcon = {
             IconButton(onClick = { onAction(BrowserAction.ExitMode) }) {

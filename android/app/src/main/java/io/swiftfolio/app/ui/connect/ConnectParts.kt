@@ -48,6 +48,8 @@ import io.swiftfolio.core.ConnectError
 private val MarkSize = 28.dp
 private val MarkShape = RoundedCornerShape(8.dp)
 private val StepIconSize = 16.dp
+private val StepSpinnerStroke = 2.dp
+private val BannerIconSize = 20.dp
 private const val ERROR_TINT_ALPHA = 0.12f
 private const val ERROR_BORDER_ALPHA = 0.40f
 
@@ -107,7 +109,7 @@ internal fun ConnectErrorBanner(error: ConnectError, onApplyRegion: () -> Unit, 
         verticalArrangement = Arrangement.spacedBy(Spacing.space1),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Rounded.ErrorOutline, contentDescription = null, tint = colors.error, modifier = Modifier.size(20.dp))
+            Icon(Icons.Rounded.ErrorOutline, contentDescription = null, tint = colors.error, modifier = Modifier.size(BannerIconSize))
             Spacer(Modifier.size(Spacing.space2))
             Text(ErrorTexts.title(error), style = MaterialTheme.typography.titleMedium, color = colors.textPrimary, modifier = Modifier.weight(1f))
             IconButton(onClick = onDismiss) {
@@ -143,7 +145,7 @@ private fun ChecklistLine(row: StepRow) {
     ) {
         when (row.status) {
             StepStatus.PENDING -> Icon(Icons.Rounded.RadioButtonUnchecked, null, tint = colors.textTertiary, modifier = Modifier.size(StepIconSize))
-            StepStatus.RUNNING -> CircularProgressIndicator(modifier = Modifier.size(StepIconSize), strokeWidth = 2.dp, color = colors.accentText)
+            StepStatus.RUNNING -> CircularProgressIndicator(modifier = Modifier.size(StepIconSize), strokeWidth = StepSpinnerStroke, color = colors.accentText)
             StepStatus.DONE -> Icon(Icons.Rounded.CheckCircle, null, tint = colors.success, modifier = Modifier.size(StepIconSize))
             StepStatus.FAILED -> Icon(Icons.Rounded.Cancel, null, tint = colors.error, modifier = Modifier.size(StepIconSize))
         }

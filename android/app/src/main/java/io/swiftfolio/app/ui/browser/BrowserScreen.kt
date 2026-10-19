@@ -1,9 +1,5 @@
 package io.swiftfolio.app.ui.browser
 
-import android.Manifest
-import android.content.Context
-import android.content.pm.PackageManager
-import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -31,11 +27,10 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.swiftfolio.app.bucket.StorageState
 import io.swiftfolio.app.data.StorageUsage
 import io.swiftfolio.app.ui.components.ActivityLine
 import io.swiftfolio.app.ui.components.ConsoleSnackbarHost
@@ -52,13 +47,9 @@ fun BrowserScreen(viewModel: BrowserViewModel, onOpenSettings: () -> Unit, onSig
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val clipboard = LocalClipboardManager.current
-    val context = LocalContext.current
+    val permissions = rememberPermissionGate()
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         viewModel.onAction(BrowserAction.FilesPicked(uris.map { it.toString() }))
-    }
-    // Transfer notifications are optional: the picker opens whether or not permission is granted.
-    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
-        picker.launch(arrayOf(ALL_FILES))
     }
     LaunchedEffect(viewModel) {
         viewModel.effects.collect { effect ->
@@ -71,14 +62,14 @@ fun BrowserScreen(viewModel: BrowserViewModel, onOpenSettings: () -> Unit, onSig
     BackHandler(enabled = state.canGoBack) { viewModel.onAction(BrowserAction.Back) }
     BrowserContent(
         state = state,
-        onAction = viewModel::onAction,
-        onPickFiles = {
-            if (needsNotificationPermission(context)) {
-                notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        onAction = { action ->
+            if (action.startsDownload()) {
+                permissions.runAfterAsking(TransferPermissions.forDownload) { viewModel.onAction(action) }
             } else {
-                picker.launch(arrayOf(ALL_FILES))
+                viewModel.onAction(action)
             }
         },
+        onPickFiles = { permissions.runAfterAsking(TransferPermissions.forUpload) { picker.launch(arrayOf(ALL_FILES)) } },
         onOpenSettings = onOpenSettings,
         onCopy = { text ->
             clipboard.setText(AnnotatedString(text))
@@ -90,9 +81,8 @@ fun BrowserScreen(viewModel: BrowserViewModel, onOpenSettings: () -> Unit, onSig
 
 private const val ALL_FILES = "*/*"
 
-private fun needsNotificationPermission(context: Context): Boolean =
-    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+/** Downloads ask for notification (and on old devices storage) permission before they are queued. */
+private fun BrowserAction.startsDownload(): Boolean = this is BrowserAction.Download || this == BrowserAction.DownloadSelection
 
 /**
  * Stateless browser (DIRECTION-C.md 6.2-6.10): collapsing top bar, listing, floating path

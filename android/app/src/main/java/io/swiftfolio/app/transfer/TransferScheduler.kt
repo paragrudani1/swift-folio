@@ -1,6 +1,5 @@
 package io.swiftfolio.app.transfer
 
-import io.swiftfolio.core.TransferProgress
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -8,7 +7,8 @@ import kotlinx.coroutines.flow.Flow
  *
  * Invariants: batches of one [TransferKind] run one after another in enqueue order; a batch
  * never fails as a whole because of one file (per-file failures are in [TransferItem.status]);
- * no credentials are ever written into scheduler storage.
+ * a batch restarted after process death skips files that already finished; no credentials are
+ * ever written into scheduler storage. Suspend methods do their I/O off the main thread.
  */
 interface TransferScheduler {
     /** Every known batch (queued, running and recently finished), newest last. Never completes. */
@@ -17,21 +17,30 @@ interface TransferScheduler {
     /**
      * Queues an upload of the picked documents [uris] (content URIs as strings) into
      * [prefix] of [bucket]. Names and sizes are read from the content provider.
-     * Returns the number of files queued (0 when none could be read).
+     * Returns the number of files queued (0 when none could be read or [bucket] is empty).
      */
     suspend fun enqueueUploads(bucket: String, prefix: String, uris: List<String>): Int
 
-    /** Queues a download of [keys] from [bucket] to the device Downloads folder. */
-    suspend fun enqueueDownloads(bucket: String, keys: List<String>)
+    /**
+     * Queues a download of [keys] from [bucket] to the device Downloads folder. Returns the
+     * number of files queued (0 when [keys] or [bucket] is empty).
+     */
+    suspend fun enqueueDownloads(bucket: String, keys: List<String>): Int
 
-    /** Cancels every queued and running batch of [kind]. Finished files are kept. */
-    fun cancelAll(kind: TransferKind)
+    /**
+     * Cancels every queued and running batch of [kind] and releases the read grants of their
+     * picked documents. Files that already finished are kept.
+     */
+    suspend fun cancelAll(kind: TransferKind)
 
     /** Cancels one file of a running or queued batch. No-op for finished files. */
     fun cancelItem(batchId: String, itemIndex: Int)
 
-    /** Forgets finished batches so they disappear from [queue]. */
-    fun clearFinished()
+    /**
+     * Forgets batches whose work has ended so they disappear from [queue], deleting their
+     * stored files. Queued and running batches, including one enqueued concurrently, are kept.
+     */
+    suspend fun clearFinished()
 }
 
 /** Direction of a transfer. */
@@ -77,23 +86,10 @@ data class TransferBatch(
     val prefix: String,
     val items: List<TransferItem>,
     val isActive: Boolean,
-) {
-    /** Aggregate progress across [items]. */
-    val progress: TransferProgress
-        get() = TransferProgress.of(items.map { it.bytesDone to it.sizeBytes }, items.count { it.status.isTerminal })
-}
+)
 
 /** Snapshot of all batches. */
 data class TransferQueue(val batches: List<TransferBatch> = emptyList()) {
     /** Batches of [kind]. */
     fun ofKind(kind: TransferKind): List<TransferBatch> = batches.filter { it.kind == kind }
-
-    /** True while any batch of [kind] is queued or running. */
-    fun isActive(kind: TransferKind): Boolean = batches.any { it.kind == kind && it.isActive }
-
-    /** Combined progress of the active batches of [kind]. */
-    fun activeProgress(kind: TransferKind): TransferProgress {
-        val items = batches.filter { it.kind == kind && it.isActive }.flatMap { it.items }
-        return TransferProgress.of(items.map { it.bytesDone to it.sizeBytes }, items.count { it.status.isTerminal })
-    }
 }

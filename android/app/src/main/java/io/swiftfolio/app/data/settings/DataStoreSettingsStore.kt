@@ -2,6 +2,7 @@ package io.swiftfolio.app.data.settings
 
 import android.util.Log
 import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
@@ -15,7 +16,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import java.io.IOException
 
-/** [SettingsStore] backed by a Preferences DataStore. */
+/** [SettingsStore] backed by a Preferences DataStore. Read and write failures are logged by type, never thrown. */
 class DataStoreSettingsStore(private val dataStore: DataStore<Preferences>) : SettingsStore {
 
     override val settings: Flow<AppSettings> = dataStore.data
@@ -26,12 +27,16 @@ class DataStoreSettingsStore(private val dataStore: DataStore<Preferences>) : Se
         }
         .map { preferences -> preferences.toSettings() }
 
-    override suspend fun setThemeMode(mode: ThemeMode) {
-        dataStore.edit { it[THEME_MODE] = mode.name }
-    }
+    override suspend fun setThemeMode(mode: ThemeMode) = write { it[THEME_MODE] = mode.name }
 
-    override suspend fun setRememberCredentials(remember: Boolean) {
-        dataStore.edit { it[REMEMBER] = remember }
+    override suspend fun setRememberCredentials(remember: Boolean) = write { it[REMEMBER] = remember }
+
+    private suspend fun write(change: (MutablePreferences) -> Unit) {
+        try {
+            dataStore.edit { preferences -> change(preferences) }
+        } catch (error: IOException) {
+            Log.w(TAG, "Settings not saved: ${error::class.java.simpleName}")
+        }
     }
 
     private fun Preferences.toSettings(): AppSettings = AppSettings(

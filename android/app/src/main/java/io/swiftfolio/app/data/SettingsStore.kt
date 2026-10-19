@@ -26,9 +26,12 @@ interface SettingsStore {
     /** Current settings, replayed to new collectors. */
     val settings: Flow<AppSettings>
 
-    /** Persists [mode]. */
+    /** Persists [mode]. Never throws; a failed write is logged and the old value stays. */
     suspend fun setThemeMode(mode: ThemeMode)
 
-    /** Persists whether credentials should be remembered. Does not touch the credential store. */
+    /**
+     * Persists whether credentials should be remembered. Does not touch the credential store.
+     * Never throws; a failed write is logged and the old value stays.
+     */
     suspend fun setRememberCredentials(remember: Boolean)
 }

@@ -3,54 +3,37 @@ package io.swiftfolio.app.transfer
 import androidx.work.Data
 
 /**
- * Encodes per-file progress into WorkManager [Data] (kept far below the 10 KB limit by
- * using primitive arrays) and back. Used for both progress and output data.
+ * Encodes [BatchTotals] into WorkManager [Data] and back. Only five fixed-size values are
+ * written, whatever the batch size, so `Data`'s 10 KB limit can never be reached. Per-file
+ * states live in [TransferManifestStore].
  */
 object TransferProgressCodec {
-    private const val KEY_STATUS = "status"
-    private const val KEY_BYTES = "bytes"
-    private const val KEY_ERRORS = "errors"
+    private const val KEY_FILES_DONE = "files_done"
+    private const val KEY_FILES_TOTAL = "files_total"
+    private const val KEY_BYTES_DONE = "bytes_done"
+    private const val KEY_RUNNING_INDEX = "running_index"
+    private const val KEY_RUNNING_BYTES = "running_bytes"
+    private const val ABSENT = -1
 
-    /** Snapshot of all files of one batch, index-aligned with the manifest items. */
-    data class Snapshot(
-        val statuses: List<TransferItemStatus>,
-        val bytesDone: List<Long>,
-        val errorCodes: List<String?>,
-    ) {
-        /** Copy with file [index] updated. */
-        fun with(index: Int, status: TransferItemStatus, bytes: Long, errorCode: String? = null): Snapshot = copy(
-            statuses = statuses.toMutableList().also { it[index] = status },
-            bytesDone = bytesDone.toMutableList().also { it[index] = bytes },
-            errorCodes = errorCodes.toMutableList().also { it[index] = errorCode },
-        )
-
-        companion object {
-            /** All [count] files queued with no progress. */
-            fun queued(count: Int) = Snapshot(
-                statuses = List(count) { TransferItemStatus.QUEUED },
-                bytesDone = List(count) { 0L },
-                errorCodes = List(count) { null },
-            )
-        }
-    }
-
-    /** Encodes [snapshot]. Empty error codes are stored as "" because Data arrays are non-null. */
-    fun encode(snapshot: Snapshot): Data = Data.Builder()
-        .putIntArray(KEY_STATUS, snapshot.statuses.map { it.ordinal }.toIntArray())
-        .putLongArray(KEY_BYTES, snapshot.bytesDone.toLongArray())
-        .putStringArray(KEY_ERRORS, Array<String?>(snapshot.errorCodes.size) { snapshot.errorCodes[it].orEmpty() })
+    /** Encodes [totals]; a null running index is stored as -1. */
+    fun encode(totals: BatchTotals): Data = Data.Builder()
+        .putInt(KEY_FILES_DONE, totals.filesDone)
+        .putInt(KEY_FILES_TOTAL, totals.filesTotal)
+        .putLong(KEY_BYTES_DONE, totals.bytesDone)
+        .putInt(KEY_RUNNING_INDEX, totals.runningIndex ?: ABSENT)
+        .putLong(KEY_RUNNING_BYTES, totals.runningBytes)
         .build()
 
-    /** Decodes [data] for a batch of [count] files, or null when [data] holds no snapshot. */
-    fun decode(data: Data, count: Int): Snapshot? {
-        val statuses = data.getIntArray(KEY_STATUS) ?: return null
-        val bytes = data.getLongArray(KEY_BYTES) ?: return null
-        val errors = data.getStringArray(KEY_ERRORS) ?: return null
-        if (statuses.size != count || bytes.size != count || errors.size != count) return null
-        return Snapshot(
-            statuses = statuses.map { TransferItemStatus.entries.getOrElse(it) { TransferItemStatus.QUEUED } },
-            bytesDone = bytes.toList(),
-            errorCodes = errors.map { code -> code?.takeIf { it.isNotEmpty() } },
+    /** Decodes [data], or null when it holds no totals (the worker has not reported yet). */
+    fun decode(data: Data): BatchTotals? {
+        val filesTotal = data.getInt(KEY_FILES_TOTAL, ABSENT)
+        if (filesTotal == ABSENT) return null
+        return BatchTotals(
+            filesDone = data.getInt(KEY_FILES_DONE, 0),
+            filesTotal = filesTotal,
+            bytesDone = data.getLong(KEY_BYTES_DONE, 0L),
+            runningIndex = data.getInt(KEY_RUNNING_INDEX, ABSENT).takeIf { it != ABSENT },
+            runningBytes = data.getLong(KEY_RUNNING_BYTES, 0L),
         )
     }
 }

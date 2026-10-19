@@ -1,11 +1,14 @@
 package io.swiftfolio.app.ui.browser
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import io.swiftfolio.app.data.S3Repository
+import io.swiftfolio.app.bucket.BrowserUseCases
+import io.swiftfolio.app.data.DeleteSummary
 import io.swiftfolio.app.session.RestoreResult
 import io.swiftfolio.app.session.Session
 import io.swiftfolio.app.session.SessionManager
+import io.swiftfolio.app.session.SignOut
 import io.swiftfolio.app.transfer.TransferBatch
 import io.swiftfolio.app.transfer.TransferItemStatus
 import io.swiftfolio.app.transfer.TransferKind
@@ -26,22 +29,27 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * Browser state holder. Folder navigation is an in-memory prefix (not a nav destination),
- * listings are cached per prefix and revalidated on revisit. Every S3 call goes through
- * [S3Repository]; transfers go through [TransferScheduler].
+ * Browser state holder. It turns intents into state and delegates the work: listings, the
+ * storage total and bucket changes go through [BrowserUseCases], transfers through
+ * [TransferScheduler] and sign-out through [SignOut]. It makes no S3 calls itself.
+ *
+ * The current folder survives process death in [savedState]. Files picked before the session
+ * is bound (a picker result delivered to a recreated screen) wait until it is.
  */
 class BrowserViewModel(
     private val sessionManager: SessionManager,
     private val transferScheduler: TransferScheduler,
+    private val useCases: BrowserUseCases,
+    private val signOut: SignOut,
+    private val savedState: SavedStateHandle,
 ) : ViewModel() {
-    private val mutableState = MutableStateFlow(BrowserUiState())
+    private val mutableState = MutableStateFlow(restoredState())
     private val effectChannel = Channel<BrowserEffect>(Channel.BUFFERED)
-    private val listingCache = mutableMapOf<String, List<ObjectEntry>>()
-    private var repository: S3Repository? = null
     private var loadJob: Job? = null
     private var storageJob: Job? = null
     private var deleteJob: Job? = null
     private var activeUploadIds: Set<String> = emptySet()
+    private var pendingUploads: List<String> = emptyList()
 
     /** Current screen state. */
     val state: StateFlow<BrowserUiState> = mutableState.asStateFlow()
@@ -50,8 +58,9 @@ class BrowserViewModel(
     val effects: Flow<BrowserEffect> = effectChannel.receiveAsFlow()
 
     init {
-        viewModelScope.launch { attachSession() }
+        viewModelScope.launch { useCases.storage.state.collect { storage -> update { copy(storage = storage) } } }
         viewModelScope.launch { transferScheduler.queue.collect(::onTransferQueue) }
+        viewModelScope.launch { attachSession() }
     }
 
     /** Single entry point for user intents; each family is handled exhaustively. */
@@ -68,24 +77,24 @@ class BrowserViewModel(
     private fun onNavigation(action: BrowserAction.Navigation) {
         when (action) {
             is BrowserAction.RowTapped -> onRowTapped(action.entry)
-            is BrowserAction.RowLongPressed -> enterSelection(action.entry.id)
+            is BrowserAction.RowLongPressed -> update { selecting(action.entry.id) }
             is BrowserAction.JumpTo -> navigateTo(action.prefix)
             BrowserAction.NavigateUp -> navigateTo(S3Path.parentOf(state.value.prefix))
             BrowserAction.Back -> onBack()
             BrowserAction.Refresh -> load(state.value.prefix, isRefresh = true)
-            BrowserAction.RefreshStorage -> computeStorage()
+            BrowserAction.RefreshStorage -> rescanStorage()
         }
     }
 
     private fun onMode(action: BrowserAction.Mode) {
         when (action) {
-            BrowserAction.StartSearch -> update { copy(mode = CommandMode.Search, selection = emptySet(), sheet = null) }
+            BrowserAction.StartSearch -> update { searching() }
             is BrowserAction.QueryChanged -> update { copy(query = action.query) }
             is BrowserAction.TypeFilterChanged -> update { copy(typeFilter = action.filter) }
             is BrowserAction.SortSelected -> update { copy(sortOrder = sortOrder.select(action.field), sheet = null) }
-            BrowserAction.SelectAll -> update { copy(mode = CommandMode.Select, selection = visibleEntries.map { it.id }.toSet()) }
+            BrowserAction.SelectAll -> update { allSelected() }
             BrowserAction.ClearSelection -> update { copy(selection = emptySet()) }
-            BrowserAction.ExitMode -> exitMode()
+            BrowserAction.ExitMode -> update { modeExited() }
         }
     }
 
@@ -96,7 +105,7 @@ class BrowserViewModel(
             is BrowserAction.RequestDelete -> update { copy(sheet = BrowserSheet.ConfirmDelete(action.ids)) }
             BrowserAction.DeleteSelection -> update { copy(sheet = BrowserSheet.ConfirmDelete(selection.toList())) }
             BrowserAction.ConfirmDelete -> confirmDelete()
-            is BrowserAction.NewFolderNameChanged -> updateNewFolder { copy(name = action.name, error = null) }
+            is BrowserAction.NewFolderNameChanged -> update { newFolderEdited { copy(name = action.name, error = null) } }
             BrowserAction.CreateFolder -> createFolder()
         }
     }
@@ -106,9 +115,9 @@ class BrowserViewModel(
             is BrowserAction.Download -> download(action.keys)
             BrowserAction.DownloadSelection -> download(state.value.selection.filterNot(S3Path::isFolderMarker))
             is BrowserAction.FilesPicked -> upload(action.uris)
-            BrowserAction.CancelAllUploads -> transferScheduler.cancelAll(TransferKind.UPLOAD)
-            is BrowserAction.CancelUpload -> transferScheduler.cancelItem(action.batchId, action.itemIndex)
-            BrowserAction.ClearFinishedUploads -> transferScheduler.clearFinished()
+            BrowserAction.CancelAllTransfers -> viewModelScope.launch { TransferKind.entries.forEach { transferScheduler.cancelAll(it) } }
+            is BrowserAction.CancelTransfer -> transferScheduler.cancelItem(action.batchId, action.itemIndex)
+            BrowserAction.ClearFinishedTransfers -> viewModelScope.launch { transferScheduler.clearFinished() }
         }
     }
 
@@ -116,12 +125,17 @@ class BrowserViewModel(
         when (action) {
             is BrowserAction.Copied -> update { copy(message = BrowserMessage.Copied(action.text)) }
             BrowserAction.MessageShown -> update { copy(message = null) }
-            BrowserAction.EditCredentials -> leave(signOut = false)
-            BrowserAction.SignOut -> leave(signOut = true)
+            BrowserAction.EditCredentials -> leave(signingOut = false)
+            BrowserAction.SignOut -> leave(signingOut = true)
         }
     }
 
     // region Session and loading
+
+    private fun restoredState(): BrowserUiState {
+        val prefix = savedState.get<String>(KEY_PREFIX).orEmpty()
+        return BrowserUiState(prefix = prefix, navigationDepth = S3Path.depth(prefix))
+    }
 
     private suspend fun attachSession() {
         val session = sessionManager.session.value ?: when (val restored = sessionManager.restore()) {
@@ -135,62 +149,48 @@ class BrowserViewModel(
     }
 
     private fun bind(session: Session) {
-        repository = session.repository
-        session.initialListing?.let { listingCache[""] = it }
+        session.initialListing?.let { useCases.listings.seed(prefix = "", entries = it) }
         update { copy(bucket = session.config.bucket, region = session.config.region, isConnected = true) }
-        load(prefix = "", isRefresh = false)
-        computeStorage()
+        load(state.value.prefix, isRefresh = false)
+        rescanStorage()
+        val waiting = pendingUploads
+        pendingUploads = emptyList()
+        upload(waiting)
     }
 
     private fun load(prefix: String, isRefresh: Boolean) {
-        val repo = repository ?: return
-        val cached = listingCache[prefix]
+        if (!state.value.isConnected) return
+        val cached = useCases.listings.cached(prefix)
         update { copy(listing = cached?.let(ListingState::Loaded) ?: ListingState.Loading, isRefreshing = isRefresh) }
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
-            val result = repo.list(prefix)
+            val result = useCases.listings.load(prefix)
             if (state.value.prefix != prefix) return@launch
             when (result) {
-                is S3Result.Success -> {
-                    listingCache[prefix] = result.value
-                    update { copy(listing = ListingState.Loaded(result.value), isRefreshing = false) }
-                }
-                is S3Result.Failure -> onListingFailed(result.error, listingCache[prefix])
+                is S3Result.Success -> update { copy(listing = ListingState.Loaded(result.value), isRefreshing = false) }
+                is S3Result.Failure -> onListingFailed(result.error, useCases.listings.cached(prefix))
             }
         }
     }
 
-    private fun onListingFailed(error: ConnectError, stale: List<ObjectEntry>?) {
-        update {
-            copy(
-                listing = ListingState.Failed(error, stale),
-                isRefreshing = false,
-                credentialsRejected = error.takeIf { it.kind.isCredentialProblem },
-            )
-        }
+    private fun onListingFailed(error: ConnectError, stale: List<ObjectEntry>?) = update {
+        copy(listing = ListingState.Failed(error, stale), isRefreshing = false, credentialsRejected = error.takeIf { it.kind.isCredentialProblem })
     }
 
-    private fun computeStorage() {
-        val repo = repository ?: return
+    /** Lists the whole bucket again; only on connect and on explicit refresh. */
+    private fun rescanStorage() {
+        if (!state.value.isConnected) return
         storageJob?.cancel()
-        update { copy(storage = StorageState.Computing) }
-        storageJob = viewModelScope.launch {
-            val storage = when (val result = repo.computeStorageUsage()) {
-                is S3Result.Success -> StorageState.Ready(result.value)
-                is S3Result.Failure -> StorageState.Unavailable(result.error)
-            }
-            update { copy(storage = storage) }
-        }
+        storageJob = viewModelScope.launch { useCases.storage.rescan() }
     }
 
     // endregion
 
-    // region Navigation and modes
+    // region Navigation
 
     private fun onRowTapped(entry: ObjectEntry) {
-        val current = state.value
         when {
-            current.mode == CommandMode.Select -> toggleSelection(entry.id)
+            state.value.mode == CommandMode.Select -> update { selectionToggled(entry.id) }
             entry is ObjectEntry.Folder -> navigateTo(entry.prefix)
             entry is ObjectEntry.File -> update { copy(sheet = BrowserSheet.FileDetails(entry)) }
         }
@@ -199,16 +199,8 @@ class BrowserViewModel(
     private fun navigateTo(prefix: String) {
         val target = S3Path.normalizePrefix(prefix)
         if (target == state.value.prefix) return
-        update {
-            copy(
-                prefix = target,
-                navigationDepth = S3Path.depth(target),
-                mode = CommandMode.Browse,
-                query = "",
-                selection = emptySet(),
-                sheet = null,
-            )
-        }
+        savedState[KEY_PREFIX] = target
+        update { navigatedTo(target) }
         load(target, isRefresh = false)
     }
 
@@ -216,17 +208,9 @@ class BrowserViewModel(
         val current = state.value
         when {
             current.sheet != null -> dismissSheet()
-            current.mode != CommandMode.Browse -> exitMode()
+            current.mode != CommandMode.Browse -> update { modeExited() }
             current.prefix.isNotEmpty() -> navigateTo(S3Path.parentOf(current.prefix))
         }
-    }
-
-    private fun exitMode() = update { copy(mode = CommandMode.Browse, query = "", selection = emptySet()) }
-
-    private fun enterSelection(id: String) = update { copy(mode = CommandMode.Select, selection = setOf(id), sheet = null) }
-
-    private fun toggleSelection(id: String) = update {
-        copy(selection = if (id in selection) selection - id else selection + id)
     }
 
     private fun dismissSheet() {
@@ -239,52 +223,39 @@ class BrowserViewModel(
     // region Mutations
 
     private fun confirmDelete() {
-        val repo = repository ?: return
         val sheet = state.value.sheet as? BrowserSheet.ConfirmDelete ?: return
-        if (sheet.progress != null) return
+        if (sheet.progress != null || !state.value.isConnected) return
         deleteJob = viewModelScope.launch {
-            val result = repo.delete(sheet.ids) { progress ->
-                update { copy(sheet = (this.sheet as? BrowserSheet.ConfirmDelete)?.copy(progress = progress) ?: this.sheet) }
-            }
-            val message = when (result) {
-                is S3Result.Success -> if (result.value.failedKeys.isEmpty()) {
-                    BrowserMessage.Deleted(result.value.deleted)
-                } else {
-                    BrowserMessage.DeletedPartially(result.value.deleted, result.value.failedKeys.size)
-                }
-                is S3Result.Failure -> BrowserMessage.OperationFailed(result.error)
-            }
-            update { copy(sheet = null, mode = CommandMode.Browse, selection = emptySet(), message = message) }
-            invalidateAndReload()
+            val result = useCases.mutations.delete(sheet.ids) { progress -> update { deleteProgressed(progress) } }
+            update { bulkActionDone(deleteMessage(result)) }
+            load(state.value.prefix, isRefresh = true)
         }
+    }
+
+    private fun deleteMessage(result: S3Result<DeleteSummary>): BrowserMessage = when (result) {
+        is S3Result.Success -> if (result.value.failedKeys.isEmpty()) {
+            BrowserMessage.Deleted(result.value.deleted)
+        } else {
+            BrowserMessage.DeletedPartially(result.value.deleted, result.value.failedKeys.size)
+        }
+        is S3Result.Failure -> BrowserMessage.OperationFailed(result.error)
     }
 
     private fun createFolder() {
-        val repo = repository ?: return
         val current = state.value
         val sheet = current.sheet as? BrowserSheet.NewFolder ?: return
-        if (sheet.name.isBlank() || current.newFolderError != null || sheet.isCreating) return
+        if (!current.isConnected || sheet.name.isBlank() || current.newFolderError != null || sheet.isCreating) return
         val name = sheet.name.trim()
-        updateNewFolder { copy(isCreating = true) }
+        update { newFolderEdited { copy(isCreating = true) } }
         viewModelScope.launch {
-            when (val result = repo.createFolder(S3Path.childPrefix(current.prefix, name))) {
+            when (val result = useCases.mutations.createFolder(current.prefix, name)) {
                 is S3Result.Success -> {
                     update { copy(sheet = null, message = BrowserMessage.FolderCreated(name)) }
-                    invalidateAndReload()
+                    load(state.value.prefix, isRefresh = true)
                 }
-                is S3Result.Failure -> updateNewFolder { copy(isCreating = false, error = result.error) }
+                is S3Result.Failure -> update { newFolderEdited { copy(isCreating = false, error = result.error) } }
             }
         }
-    }
-
-    private fun invalidateAndReload() {
-        listingCache.clear()
-        load(state.value.prefix, isRefresh = true)
-        computeStorage()
-    }
-
-    private fun updateNewFolder(transform: BrowserSheet.NewFolder.() -> BrowserSheet.NewFolder) = update {
-        (sheet as? BrowserSheet.NewFolder)?.let { copy(sheet = it.transform()) } ?: this
     }
 
     // endregion
@@ -292,51 +263,59 @@ class BrowserViewModel(
     // region Transfers
 
     private fun download(keys: List<String>) {
-        if (keys.isEmpty()) return
+        if (keys.isEmpty() || !state.value.isConnected) return
         val bucket = state.value.bucket
-        update { copy(sheet = null, mode = CommandMode.Browse, selection = emptySet()) }
+        update { bulkActionDone(message = null) }
         viewModelScope.launch {
-            transferScheduler.enqueueDownloads(bucket, keys)
-            update { copy(message = BrowserMessage.DownloadsQueued(keys.size)) }
+            val queued = transferScheduler.enqueueDownloads(bucket, keys)
+            if (queued > 0) update { copy(message = BrowserMessage.DownloadsQueued(queued)) }
         }
     }
 
+    /** Queues [uris]; before the session is bound they are held, so they never go to an empty bucket. */
     private fun upload(uris: List<String>) {
         if (uris.isEmpty()) return
         val current = state.value
+        if (!current.isConnected) {
+            pendingUploads = pendingUploads + uris
+            return
+        }
         viewModelScope.launch {
             val queued = transferScheduler.enqueueUploads(current.bucket, current.prefix, uris)
-            val message = if (queued == 0) BrowserMessage.NothingToUpload else BrowserMessage.UploadsQueued(queued)
-            update { copy(message = message) }
+            update { copy(message = if (queued == 0) BrowserMessage.NothingToUpload else BrowserMessage.UploadsQueued(queued)) }
         }
     }
 
-    /** Mirrors the upload queue and refreshes the listing when a batch into this folder finishes. */
+    /** Mirrors the queue and applies each upload batch that finished while this screen watched. */
     private fun onTransferQueue(queue: TransferQueue) {
         val uploads = queue.ofKind(TransferKind.UPLOAD)
         val finished = uploads.filter { it.id in activeUploadIds && !it.isActive }
         activeUploadIds = uploads.filter { it.isActive }.map { it.id }.toSet()
-        update { copy(uploadBatches = uploads) }
+        update { copy(transferBatches = queue.batches) }
         finished.forEach(::onUploadBatchFinished)
     }
 
     private fun onUploadBatchFinished(batch: TransferBatch) {
-        val done = batch.items.count { it.status == TransferItemStatus.DONE }
-        update { copy(message = BrowserMessage.UploadsFinished(done, batch.prefix)) }
-        listingCache.remove(batch.prefix)
+        val done = batch.items.filter { it.status == TransferItemStatus.DONE }
+        update { copy(message = BrowserMessage.UploadsFinished(done.size, batch.prefix)) }
+        if (batch.bucket != state.value.bucket) return
+        useCases.mutations.recordUpload(batch.prefix, bytes = done.sumOf { it.sizeBytes ?: it.bytesDone }, objects = done.size)
         if (batch.prefix == state.value.prefix) load(batch.prefix, isRefresh = true)
-        computeStorage()
     }
 
     // endregion
 
-    private fun leave(signOut: Boolean) {
+    private fun leave(signingOut: Boolean) {
         viewModelScope.launch {
-            if (signOut) sessionManager.signOut(forgetCredentials = false)
+            if (signingOut) signOut(forgetCredentials = false)
             update { copy(credentialsRejected = null) }
             effectChannel.send(BrowserEffect.NavigateToConnect)
         }
     }
 
     private inline fun update(transform: BrowserUiState.() -> BrowserUiState) = mutableState.update { it.transform() }
+
+    private companion object {
+        const val KEY_PREFIX = "browser_prefix"
+    }
 }

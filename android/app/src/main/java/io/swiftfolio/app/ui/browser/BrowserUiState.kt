@@ -1,7 +1,8 @@
 package io.swiftfolio.app.ui.browser
 
+import io.swiftfolio.app.AppConstants
+import io.swiftfolio.app.bucket.StorageState
 import io.swiftfolio.app.data.DeleteProgress
-import io.swiftfolio.app.data.StorageUsage
 import io.swiftfolio.app.transfer.TransferBatch
 import io.swiftfolio.core.Breadcrumbs
 import io.swiftfolio.core.ConnectError
@@ -14,7 +15,6 @@ import io.swiftfolio.core.ObjectEntry
 import io.swiftfolio.core.S3Path
 import io.swiftfolio.core.SortField
 import io.swiftfolio.core.SortOrder
-import io.swiftfolio.core.TransferProgress
 
 /** What the list area shows. */
 sealed interface ListingState {
@@ -26,18 +26,6 @@ sealed interface ListingState {
 
     /** The listing failed; [stale] rows (if cached) stay visible, dimmed. */
     data class Failed(val error: ConnectError, val stale: List<ObjectEntry>?) : ListingState
-}
-
-/** Storage usage chip. */
-sealed interface StorageState {
-    /** Computing; the chip shimmers. */
-    data object Computing : StorageState
-
-    /** Total known. */
-    data class Ready(val usage: StorageUsage) : StorageState
-
-    /** Could not be computed (for example missing permission). */
-    data class Unavailable(val error: ConnectError) : StorageState
 }
 
 /** The three command-bar modes (DIRECTION-C.md 6.2-6.4). */
@@ -60,8 +48,8 @@ sealed interface BrowserSheet {
     /** Full breadcrumb list for deep paths. */
     data object PathJump : BrowserSheet
 
-    /** Upload queue. */
-    data object Uploads : BrowserSheet
+    /** Upload and download queue. */
+    data object Transfers : BrowserSheet
 
     /** Actions for one file. */
     data class FileDetails(val file: ObjectEntry.File) : BrowserSheet
@@ -73,6 +61,10 @@ sealed interface BrowserSheet {
     data class ConfirmDelete(val ids: List<String>, val progress: DeleteProgress? = null) : BrowserSheet {
         /** Number of folders (recursive deletes) among [ids]. */
         val folderCount: Int get() = ids.count { S3Path.isFolderMarker(it) }
+
+        /** Large deletes and any folder delete must be confirmed by holding the button. */
+        val needsHoldToConfirm: Boolean
+            get() = progress == null && (ids.size >= AppConstants.HOLD_TO_CONFIRM_THRESHOLD || folderCount > 0)
     }
 }
 
@@ -122,7 +114,7 @@ data class BrowserUiState(
     val selection: Set<String> = emptySet(),
     val storage: StorageState = StorageState.Computing,
     val sheet: BrowserSheet? = null,
-    val uploadBatches: List<TransferBatch> = emptyList(),
+    val transferBatches: List<TransferBatch> = emptyList(),
     val message: BrowserMessage? = null,
     val credentialsRejected: ConnectError? = null,
 ) {
@@ -165,11 +157,11 @@ data class BrowserUiState(
     /** True when the selection contains folders (downloads are files only). */
     val selectionHasFolders: Boolean get() = selection.any { S3Path.isFolderMarker(it) }
 
-    /** Active uploads progress, or null when nothing is uploading. */
-    val uploadProgress: TransferProgress? by lazy {
-        val active = uploadBatches.filter { it.isActive }.flatMap { it.items }
-        if (active.isEmpty()) null else TransferProgress.of(active.map { it.bytesDone to it.sizeBytes }, active.count { it.status.isTerminal })
-    }
+    /** True when every visible row is selected (the top bar then offers Clear instead of Select all). */
+    val isAllSelected: Boolean by lazy { visibleEntries.isNotEmpty() && visibleEntries.all { it.id in selection } }
+
+    /** Rows, progress and heading of the transfer queue (sheet and command-bar chip). */
+    val transferQueue: TransferQueueSummary by lazy { TransferQueueSummary.of(transferBatches) }
 
     /** Validation of the new-folder name, or null when valid or no sheet is open. */
     val newFolderError: FieldError? by lazy {
@@ -269,14 +261,14 @@ sealed interface BrowserAction {
     /** Files were picked for upload (content URIs as strings). */
     data class FilesPicked(val uris: List<String>) : BrowserAction.Transfer
 
-    /** Cancel all uploads. */
-    data object CancelAllUploads : BrowserAction.Transfer
+    /** Cancel every queued and running upload and download. */
+    data object CancelAllTransfers : BrowserAction.Transfer
 
-    /** Cancel one upload. */
-    data class CancelUpload(val batchId: String, val itemIndex: Int) : BrowserAction.Transfer
+    /** Cancel one file of a batch. */
+    data class CancelTransfer(val batchId: String, val itemIndex: Int) : BrowserAction.Transfer
 
-    /** Hide finished uploads. */
-    data object ClearFinishedUploads : BrowserAction.Transfer
+    /** Hide finished batches. */
+    data object ClearFinishedTransfers : BrowserAction.Transfer
 
     /** Something was copied (for the confirmation chip). */
     data class Copied(val text: String) : BrowserAction.Feedback

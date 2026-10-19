@@ -20,13 +20,14 @@ data class StepRow(val step: ConnectStep, val status: StepStatus)
 /**
  * Everything the Connect screen renders. Field errors appear only after the field lost
  * focus once (or after a submit attempt), never while the user is still typing.
+ * "Remember" is off until the user turns it on. [toString] redacts the secret.
  */
 data class ConnectUiState(
     val accessKeyId: String = "",
     val secretAccessKey: String = "",
     val bucket: String = "",
     val region: String = CoreConstants.DEFAULT_REGION,
-    val remember: Boolean = true,
+    val remember: Boolean = false,
     val secretVisible: Boolean = false,
     val touchedFields: Set<ConnectField> = emptySet(),
     val isConnecting: Boolean = false,
@@ -59,6 +60,11 @@ data class ConnectUiState(
     /** Field to flag after a server-side failure, from the [errorFields] table. */
     val errorField: ConnectField? get() = error?.kind?.let { errorFields[it] }
 
+    /** Never prints the secret, so the state can be logged or appear in crash reports safely. */
+    override fun toString(): String =
+        "ConnectUiState(config=$config, remember=$remember, secretVisible=$secretVisible, touchedFields=$touchedFields, " +
+            "isConnecting=$isConnecting, steps=$steps, error=$error, themeMode=$themeMode)"
+
     private companion object {
         val errorFields: Map<ConnectErrorKind, ConnectField> = mapOf(
             ConnectErrorKind.INVALID_ACCESS_KEY to ConnectField.ACCESS_KEY,
@@ -75,8 +81,10 @@ sealed interface ConnectAction {
     /** Access key text changed. */
     data class AccessKeyChanged(val value: String) : ConnectAction
 
-    /** Secret text changed. */
-    data class SecretChanged(val value: String) : ConnectAction
+    /** Secret text changed. [toString] redacts it. */
+    data class SecretChanged(val value: String) : ConnectAction {
+        override fun toString(): String = "SecretChanged(<redacted>)"
+    }
 
     /** Bucket text changed. */
     data class BucketChanged(val value: String) : ConnectAction
@@ -93,7 +101,7 @@ sealed interface ConnectAction {
     /** Reveal/mask toggle on the secret field. */
     data object SecretVisibilityToggled : ConnectAction
 
-    /** App went to the background: mask the secret. */
+    /** The screen lost the foreground (paused, for example in recents or behind a dialog): mask the secret. */
     data object AppBackgrounded : ConnectAction
 
     /** Connect button pressed (or IME Done). */

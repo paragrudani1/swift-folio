@@ -80,6 +80,7 @@ class ConnectViewModelTest {
         val vm = viewModel()
         val effects = effectsOf(vm)
         vm.fill()
+        vm.onAction(ConnectAction.RememberChanged(true))
         vm.onAction(ConnectAction.Submit)
         assertEquals(listOf(ConnectEffect.NavigateToBrowser), effects)
         assertTrue(vm.state.value.steps.all { it.status == StepStatus.DONE })
@@ -114,6 +115,28 @@ class ConnectViewModelTest {
         assertEquals(ConnectField.SECRET, vm.state.value.errorField)
         vm.onAction(ConnectAction.SecretChanged(TestData.SECRET + "x"))
         assertNull(vm.state.value.error)
+    }
+
+    @Test fun `credentials are not remembered unless the user opts in`() = runTest {
+        val vm = viewModel()
+        assertFalse(vm.state.value.remember)
+        vm.fill()
+        vm.onAction(ConnectAction.Submit)
+        assertNull(credentials.saved)
+    }
+
+    @Test fun `state and actions never print the secret`() = runTest {
+        val vm = viewModel()
+        vm.fill()
+        assertFalse(vm.state.value.toString().contains(TestData.SECRET))
+        assertFalse(ConnectAction.SecretChanged(TestData.SECRET).toString().contains(TestData.SECRET))
+    }
+
+    @Test fun `leaving the foreground masks the secret`() = runTest {
+        val vm = viewModel()
+        vm.onAction(ConnectAction.SecretVisibilityToggled)
+        vm.onAction(ConnectAction.AppBackgrounded)
+        assertFalse(vm.state.value.secretVisible)
     }
 
     @Test fun `revealed secret is masked again after ten seconds`() = runTest {

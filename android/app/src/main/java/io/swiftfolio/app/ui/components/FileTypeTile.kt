@@ -30,6 +30,7 @@ import io.swiftfolio.app.ui.theme.TileShape
 private val GlyphSize = 20.dp
 private val CheckSize = 24.dp
 private val CheckGlyphSize = 16.dp
+private val UncheckedRingWidth = 2.dp
 private const val SELECTION_DAMPING = 0.55f
 private const val SELECTION_STIFFNESS = 600f
 private const val CHECK_START_SCALE = 0.6f
@@ -59,7 +60,7 @@ fun FileTypeTile(style: TileStyle, mode: TileMode, modifier: Modifier = Modifier
                 ) {
                     Icon(style.icon, contentDescription = stringResource(style.labelRes), tint = style.tint(colors), modifier = Modifier.size(GlyphSize))
                 }
-                TileMode.UNCHECKED -> Box(Modifier.size(CheckSize).border(2.dp, colors.borderStrong, CircleShape))
+                TileMode.UNCHECKED -> Box(Modifier.size(CheckSize).border(UncheckedRingWidth, colors.borderStrong, CircleShape))
                 TileMode.CHECKED -> SelectedCheck()
             }
         }

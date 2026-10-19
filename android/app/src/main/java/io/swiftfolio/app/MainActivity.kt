@@ -31,7 +31,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         val splash = installSplashScreen()
         super.onCreate(savedInstanceState)
-        val container = appContainer
+        val container = (application as SwiftFolioApplication).container
         val appViewModel = ViewModelProvider(
             this,
             viewModelFactory { initializer { AppViewModel(container.sessionManager, container.settingsStore) } },

@@ -1,5 +1,6 @@
 package io.swiftfolio.app.session
 
+import io.swiftfolio.app.data.CredentialFailure
 import io.swiftfolio.app.fakes.FakeCredentialStore
 import io.swiftfolio.app.fakes.FakeS3Repository
 import io.swiftfolio.app.fakes.FakeS3RepositoryFactory
@@ -11,6 +12,7 @@ import io.swiftfolio.core.S3Result
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
@@ -78,14 +80,28 @@ class SessionManagerTest {
         assertEquals(TestData.config, credentials.saved)
     }
 
-    @Test fun `background work reuses the session repository or builds one from saved keys`() = runTest {
+    @Test fun `background work gets the session config or the saved one`() = runTest {
         manager.connect(TestData.config, remember = true) { _, _ -> }
-        val sessionRepository = manager.session.value!!.repository
-        assertSame(sessionRepository, manager.repositoryFor(TestData.BUCKET))
-        assertTrue(manager.isSessionRepository(sessionRepository))
+        assertEquals(TestData.config, manager.configFor(TestData.BUCKET))
+        assertSame(manager.session.value!!.repository, manager.current())
         manager.signOut(forgetCredentials = false)
-        val rebuilt = manager.repositoryFor(TestData.BUCKET)
-        assertTrue(rebuilt != null && !manager.isSessionRepository(rebuilt))
-        assertNull(manager.repositoryFor("other-bucket"))
+        assertNull(manager.current())
+        assertEquals(TestData.config, manager.configFor(TestData.BUCKET))
+        assertNull(manager.configFor("other-bucket"))
+    }
+
+    @Test fun `a credential store that cannot save still connects with remember off`() = runTest {
+        credentials.saveFailure = CredentialFailure.KEYSTORE
+        val result = manager.connect(TestData.config, remember = true) { _, _ -> }
+        assertTrue(result is S3Result.Success)
+        assertNull(credentials.saved)
+        assertFalse(settings.settings.first().rememberCredentials)
+    }
+
+    @Test fun `an unreadable credential store means nothing saved`() = runTest {
+        credentials.saved = TestData.config
+        credentials.loadFailure = CredentialFailure.STORAGE
+        assertFalse(manager.hasSavedCredentials())
+        assertEquals(RestoreResult.NothingSaved, manager.restore())
     }
 }

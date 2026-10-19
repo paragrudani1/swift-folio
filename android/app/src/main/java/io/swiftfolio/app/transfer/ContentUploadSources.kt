@@ -11,11 +11,20 @@ import io.swiftfolio.core.UploadPlanner
 import java.io.FileNotFoundException
 import java.io.InputStream
 
+/** Opens the payload of an upload item and manages its read grant. */
+interface UploadSourceProvider {
+    /** An [UploadSource] for [item]. Opening its stream throws when the document is gone or unreadable. */
+    fun open(item: ManifestItem): UploadSource
+
+    /** Releases the persistable read grant of [item], if one was taken. Idempotent; never throws. */
+    fun release(item: ManifestItem)
+}
+
 /**
  * Bridges picked documents (content URIs) to [UploadSource]s. Takes a persistable read
  * grant when the provider allows it, so a queued upload survives process death.
  */
-class ContentUploadSources(private val resolver: ContentResolver) {
+class ContentUploadSources(private val resolver: ContentResolver) : UploadSourceProvider {
 
     /** Reads name, size and type of [uri] and plans its key under [prefix]; null if unreadable. */
     fun describe(uri: String, prefix: String): ManifestItem? {
@@ -31,8 +40,7 @@ class ContentUploadSources(private val resolver: ContentResolver) {
         )
     }
 
-    /** An [UploadSource] for a described item. */
-    fun open(item: ManifestItem): UploadSource {
+    override fun open(item: ManifestItem): UploadSource {
         val uri = Uri.parse(requireNotNull(item.source) { "Upload item has no source URI" })
         return object : UploadSource {
             override val sizeBytes: Long? = item.sizeBytes
@@ -42,8 +50,7 @@ class ContentUploadSources(private val resolver: ContentResolver) {
         }
     }
 
-    /** Releases the persistable grant of a finished item. */
-    fun release(item: ManifestItem) {
+    override fun release(item: ManifestItem) {
         val source = item.source ?: return
         try {
             resolver.releasePersistableUriPermission(Uri.parse(source), Intent.FLAG_GRANT_READ_URI_PERMISSION)

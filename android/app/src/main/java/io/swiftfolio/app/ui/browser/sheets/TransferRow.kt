@@ -1,5 +1,6 @@
 package io.swiftfolio.app.ui.browser.sheets
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,6 +27,8 @@ import androidx.compose.ui.unit.dp
 import io.swiftfolio.app.R
 import io.swiftfolio.app.transfer.TransferItem
 import io.swiftfolio.app.transfer.TransferItemStatus
+import io.swiftfolio.app.transfer.TransferKind
+import io.swiftfolio.app.ui.browser.TransferRowModel
 import io.swiftfolio.app.ui.components.FileTypeStyles
 import io.swiftfolio.app.ui.components.FileTypeTile
 import io.swiftfolio.app.ui.components.StatusChip
@@ -39,12 +42,9 @@ private val RowBarHeight = 3.dp
 private val DoneIconSize = 20.dp
 private const val DONE_ALPHA = 0.6f
 
-/** One file of the upload queue, addressed by batch and index for per-file cancel. */
-internal data class UploadRowModel(val batchId: String, val index: Int, val item: TransferItem)
-
 /** Per-file row: tile, mono name and size, status (chip, bar, tick) and a cancel button. */
 @Composable
-internal fun UploadRow(row: UploadRowModel, onCancel: () -> Unit) {
+internal fun TransferRow(row: TransferRowModel, onCancel: () -> Unit) {
     val colors = ConsoleTheme.colors
     val item = row.item
     Row(
@@ -70,12 +70,18 @@ internal fun UploadRow(row: UploadRowModel, onCancel: () -> Unit) {
         }
         when {
             item.status == TransferItemStatus.DONE ->
-                Icon(Icons.Rounded.CheckCircle, stringResource(R.string.upload_done), tint = colors.success, modifier = Modifier.size(DoneIconSize))
+                Icon(Icons.Rounded.CheckCircle, stringResource(doneLabel(row.kind)), tint = colors.success, modifier = Modifier.size(DoneIconSize))
             !item.status.isTerminal -> IconButton(onClick = onCancel) {
-                Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cancel_upload, item.name), tint = colors.textSecondary)
+                Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cancel_transfer, item.name), tint = colors.textSecondary)
             }
         }
     }
+}
+
+@StringRes
+private fun doneLabel(kind: TransferKind): Int = when (kind) {
+    TransferKind.UPLOAD -> R.string.upload_done
+    TransferKind.DOWNLOAD -> R.string.download_done
 }
 
 @Composable

@@ -11,11 +11,11 @@ object AppConstants {
     /** Directory (inside filesDir) for transfer manifests. */
     const val TRANSFER_DIR_NAME = "transfers"
 
+    /** Suffix of the FileProvider authority (after the application id) that shares API 26-28 downloads. */
+    const val FILE_PROVIDER_SUFFIX = ".downloads"
+
     /** How long the revealed secret stays visible before it is masked again. */
     const val SECRET_REVEAL_MILLIS = 10_000L
-
-    /** Debounce for the search field. */
-    const val SEARCH_DEBOUNCE_MILLIS = 120L
 
     /** Longest time the splash screen waits for the start destination. */
     const val SPLASH_MAX_MILLIS = 400L

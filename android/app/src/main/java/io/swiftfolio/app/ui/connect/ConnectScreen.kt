@@ -59,7 +59,7 @@ fun ConnectScreen(viewModel: ConnectViewModel, onConnected: () -> Unit) {
             }
         }
     }
-    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { viewModel.onAction(ConnectAction.AppBackgrounded) }
+    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { viewModel.onAction(ConnectAction.AppBackgrounded) }
     ConnectContent(state = state, onAction = viewModel::onAction)
 }
 

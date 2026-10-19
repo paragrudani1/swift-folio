@@ -8,24 +8,21 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
-/** Ciphertext plus the random IV it was produced with. */
-class EncryptedPayload(val ciphertext: ByteArray, val iv: ByteArray)
-
 /**
  * AES-256/GCM encryption with a non-exportable key held in the Android Keystore.
  * The key never leaves secure hardware (where available); only ciphertext is stored.
  */
-class KeystoreCipher(private val keyAlias: String = DEFAULT_ALIAS) {
+class KeystoreCipher(private val keyAlias: String = DEFAULT_ALIAS) : PayloadCipher {
 
     /** Encrypts [plaintext] with a fresh random IV chosen by the Keystore. */
-    fun encrypt(plaintext: ByteArray): EncryptedPayload {
+    override fun encrypt(plaintext: ByteArray): EncryptedPayload {
         val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey())
         return EncryptedPayload(ciphertext = cipher.doFinal(plaintext), iv = cipher.iv)
     }
 
     /** Decrypts [payload]. Throws a [java.security.GeneralSecurityException] if the data or key is invalid. */
-    fun decrypt(payload: EncryptedPayload): ByteArray {
+    override fun decrypt(payload: EncryptedPayload): ByteArray {
         val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(Cipher.DECRYPT_MODE, getOrCreateKey(), GCMParameterSpec(TAG_LENGTH_BITS, payload.iv))
         return cipher.doFinal(payload.ciphertext)

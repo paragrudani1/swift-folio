@@ -28,13 +28,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import io.swiftfolio.app.AppConstants
 import io.swiftfolio.app.R
 import io.swiftfolio.app.ui.browser.BrowserSheet
 import io.swiftfolio.app.ui.components.HoldToConfirmButton
 import io.swiftfolio.app.ui.theme.ConsoleTheme
 import io.swiftfolio.app.ui.theme.Spacing
-import io.swiftfolio.core.S3Path
 
 private const val PREVIEW_KEYS = 5
 private const val ICON_BADGE_ALPHA = 0.12f
@@ -109,8 +107,7 @@ private fun DeleteConfirmButton(sheet: BrowserSheet.ConfirmDelete, onConfirm: ()
     } else {
         stringResource(R.string.delete)
     }
-    val needsHold = sheet.ids.size >= AppConstants.HOLD_TO_CONFIRM_THRESHOLD || sheet.ids.any(S3Path::isFolderMarker)
-    if (needsHold && progress == null) {
+    if (sheet.needsHoldToConfirm) {
         HoldToConfirmButton(text = label, holdHint = stringResource(R.string.hold_to_delete), onConfirm = onConfirm)
     } else {
         Button(

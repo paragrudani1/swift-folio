@@ -5,8 +5,11 @@ import io.swiftfolio.app.data.ThemeMode
 import io.swiftfolio.app.fakes.FakeCredentialStore
 import io.swiftfolio.app.fakes.FakeS3RepositoryFactory
 import io.swiftfolio.app.fakes.FakeSettingsStore
+import io.swiftfolio.app.fakes.FakeTransferScheduler
 import io.swiftfolio.app.fakes.TestData
+import io.swiftfolio.app.session.CancelTransfersAndSignOut
 import io.swiftfolio.app.session.SessionManager
+import io.swiftfolio.app.transfer.TransferKind
 import io.swiftfolio.app.ui.settings.SettingsAction
 import io.swiftfolio.app.ui.settings.SettingsEffect
 import io.swiftfolio.app.ui.settings.SettingsViewModel
@@ -29,10 +32,11 @@ class SettingsViewModelTest {
     private val credentials = FakeCredentialStore()
     private val settings = FakeSettingsStore()
     private val sessionManager = SessionManager(credentials, settings, FakeS3RepositoryFactory())
+    private val scheduler = FakeTransferScheduler()
 
     private suspend fun viewModel(): SettingsViewModel {
         sessionManager.connect(TestData.config, remember = true) { _, _ -> }
-        return SettingsViewModel(sessionManager, settings, appVersion = "1.0.0")
+        return SettingsViewModel(sessionManager, settings, CancelTransfersAndSignOut(sessionManager, scheduler), appVersion = "1.0.0")
     }
 
     @Test fun `shows the connection with a masked key`() = runTest {
@@ -66,6 +70,7 @@ class SettingsViewModelTest {
         vm.onAction(SettingsAction.ConfirmSignOut)
         assertNull(sessionManager.session.value)
         assertNull(credentials.saved)
+        assertEquals(TransferKind.entries.toList(), scheduler.cancelledKinds)
         assertEquals(listOf(SettingsEffect.NavigateToConnect), effects)
     }
 

@@ -76,7 +76,12 @@ private fun AccessKeyField(state: ConnectUiState, enabled: Boolean, onAction: (C
         enabled = enabled,
         errorText = state.accessKeyError?.let { ErrorTexts.field(it, ErrorTexts.LengthLimits.ACCESS_KEY) }
             ?: serverErrorText(state, ConnectField.ACCESS_KEY),
-        helperText = stringResource(R.string.field_access_key_helper, CoreConstants.ACCESS_KEY_MIN_LENGTH, state.accessKeyId.length),
+        helperText = stringResource(
+            R.string.field_access_key_helper,
+            CoreConstants.ACCESS_KEY_MIN_LENGTH,
+            state.accessKeyId.length,
+            CoreConstants.ACCESS_KEY_MAX_LENGTH,
+        ),
         leadingIcon = { Icon(Icons.Outlined.Key, contentDescription = null) },
         trailingIcon = if (state.accessKeyLooksValid) {
             { Icon(Icons.Rounded.CheckCircle, contentDescription = stringResource(R.string.field_valid), tint = colors.success) }

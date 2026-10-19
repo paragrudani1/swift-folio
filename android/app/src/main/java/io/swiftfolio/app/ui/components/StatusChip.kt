@@ -20,6 +20,7 @@ import io.swiftfolio.app.ui.theme.Spacing
 
 private val ChipHeight = 24.dp
 private val DotSize = 6.dp
+private val DotGap = 6.dp
 
 /** Compact 24dp mono-caps chip, optionally led by a status dot (CONNECTED, region, totals). */
 @Composable
@@ -36,7 +37,7 @@ fun StatusChip(
             .background(colors.glass2, CircleShape)
             .border(Spacing.hairline, colors.border, CircleShape)
             .padding(horizontal = Spacing.space2),
-        horizontalArrangement = Arrangement.spacedBy(Spacing.space1 + 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(DotGap),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         dotColor?.let { Box(Modifier.size(DotSize).background(it, CircleShape)) }

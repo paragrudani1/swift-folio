@@ -30,6 +30,8 @@ import io.swiftfolio.app.ui.theme.Spacing
 import io.swiftfolio.app.ui.theme.TileShape
 
 private val BarShape = RoundedCornerShape(6.dp)
+private val NameBarHeight = 12.dp
+private val MetaBarHeight = 10.dp
 private const val NAME_WIDTH_FRACTION = 0.6f
 private const val META_WIDTH_FRACTION = 0.35f
 private const val SHIMMER_SPAN = 600f
@@ -66,8 +68,8 @@ fun SkeletonRow(brush: Brush, modifier: Modifier = Modifier) {
     ) {
         Box(Modifier.size(Spacing.tileSize).background(brush, TileShape))
         Column(verticalArrangement = Arrangement.spacedBy(Spacing.space2)) {
-            Box(Modifier.fillMaxWidth(NAME_WIDTH_FRACTION).height(12.dp).background(brush, BarShape))
-            Box(Modifier.fillMaxWidth(META_WIDTH_FRACTION).height(10.dp).background(brush, BarShape))
+            Box(Modifier.fillMaxWidth(NAME_WIDTH_FRACTION).height(NameBarHeight).background(brush, BarShape))
+            Box(Modifier.fillMaxWidth(META_WIDTH_FRACTION).height(MetaBarHeight).background(brush, BarShape))
         }
     }
 }

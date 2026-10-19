@@ -110,7 +110,8 @@ internal class AwsS3Repository(private val config: ConnectionConfig) : S3Reposit
 
     override suspend fun delete(ids: Collection<String>, onProgress: (DeleteProgress) -> Unit): S3Result<DeleteSummary> =
         execute {
-            val keys = expandToKeys(ids)
+            val listedSizes = mutableMapOf<String, Long>()
+            val keys = expandToKeys(ids, listedSizes)
             val failed = mutableListOf<String>()
             var deleted = 0
             onProgress(DeleteProgress(deleted = 0, total = keys.size))
@@ -120,7 +121,9 @@ internal class AwsS3Repository(private val config: ConnectionConfig) : S3Reposit
                 deleted += batch.size - batchFailures.size
                 onProgress(DeleteProgress(deleted = deleted, total = keys.size))
             }
-            DeleteSummary(deleted = deleted, failedKeys = failed)
+            val failedKeys = failed.toSet()
+            val freedBytes = listedSizes.filterKeys { it !in failedKeys }.values.sum()
+            DeleteSummary(deleted = deleted, failedKeys = failed, freedBytes = freedBytes)
         }
 
     override suspend fun upload(source: UploadSource, key: String, onProgress: (Long) -> Unit): S3Result<Unit> =
@@ -183,15 +186,20 @@ internal class AwsS3Repository(private val config: ConnectionConfig) : S3Reposit
         } while (token != null)
     }
 
-    private suspend fun expandToKeys(ids: Collection<String>): List<String> {
+    /** Every key to delete; the sizes of objects found under deleted prefixes go into [listedSizes]. */
+    private suspend fun expandToKeys(ids: Collection<String>, listedSizes: MutableMap<String, Long>): List<String> {
         val keys = linkedSetOf<String>()
         ids.forEach { id ->
-            if (!S3Path.isFolderMarker(id)) {
-                keys += id
-            } else {
-                forEachPage(listPrefix = id, delimited = false) { page -> page.contents.orEmpty().mapNotNullTo(keys) { it.key } }
-                keys += id
+            if (S3Path.isFolderMarker(id)) {
+                forEachPage(listPrefix = id, delimited = false) { page ->
+                    page.contents.orEmpty().forEach { item ->
+                        val key = item.key ?: return@forEach
+                        keys += key
+                        listedSizes[key] = item.size ?: 0L
+                    }
+                }
             }
+            keys += id
         }
         return keys.toList()
     }

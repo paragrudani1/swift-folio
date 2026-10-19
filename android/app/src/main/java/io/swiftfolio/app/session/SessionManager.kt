@@ -1,11 +1,14 @@
 package io.swiftfolio.app.session
 
 import io.swiftfolio.app.data.ConnectStep
+import io.swiftfolio.app.data.CredentialResult
 import io.swiftfolio.app.data.CredentialStore
 import io.swiftfolio.app.data.S3Repository
 import io.swiftfolio.app.data.S3RepositoryFactory
 import io.swiftfolio.app.data.SettingsStore
 import io.swiftfolio.app.data.StepStatus
+import io.swiftfolio.app.data.valueOrNull
+import io.swiftfolio.app.transfer.TransferCredentials
 import io.swiftfolio.core.ConnectError
 import io.swiftfolio.core.ConnectionConfig
 import io.swiftfolio.core.ObjectEntry
@@ -40,7 +43,9 @@ sealed interface RestoreResult {
 
 /**
  * Owns the lifecycle of the active [Session]: connect, restore from saved credentials,
- * remember/forget and sign out. Screens observe [session]; nothing else creates repositories.
+ * remember/forget and sign out. Screens observe [session]. The session's repository is shared
+ * by the screens; background transfers build their own from [configFor], so closing the
+ * session never breaks a running transfer.
  *
  * Thread-safety: methods are meant to be called from the main thread (ViewModels).
  */
@@ -48,7 +53,7 @@ class SessionManager(
     private val credentialStore: CredentialStore,
     private val settingsStore: SettingsStore,
     private val repositoryFactory: S3RepositoryFactory,
-) {
+) : ActiveRepository, TransferCredentials {
     private val mutableSession = MutableStateFlow<Session?>(null)
     private var pendingRestoreFailure: RestoreResult.Failed? = null
 
@@ -57,7 +62,8 @@ class SessionManager(
 
     /**
      * Verifies [config], reporting checklist steps through [onStep]. On success the session
-     * becomes active and credentials are saved or forgotten according to [remember].
+     * becomes active and credentials are saved or forgotten according to [remember]; if they
+     * cannot be saved the session still starts and "remember" is switched off.
      * On failure the previous session is left untouched.
      */
     suspend fun connect(
@@ -81,7 +87,7 @@ class SessionManager(
     /** Reconnects with saved credentials. A failure is kept for [takeRestoreFailure]. */
     suspend fun restore(): RestoreResult {
         mutableSession.value?.let { return RestoreResult.Connected(it) }
-        val saved = credentialStore.load() ?: return RestoreResult.NothingSaved
+        val saved = loadSaved() ?: return RestoreResult.NothingSaved
         val repository = repositoryFactory.create(saved)
         return when (val verified = repository.verifyConnection { _, _ -> }) {
             is S3Result.Success -> RestoreResult.Connected(activate(Session(saved, repository, verified.value)))
@@ -95,11 +101,11 @@ class SessionManager(
     /** Returns and clears the last failed restore, so Connect can show it once. */
     fun takeRestoreFailure(): RestoreResult.Failed? = pendingRestoreFailure.also { pendingRestoreFailure = null }
 
-    /** Saved config used to prefill the Connect form, or null. */
-    suspend fun savedConfig(): ConnectionConfig? = credentialStore.load()
+    /** Saved config used to prefill the Connect form, or null (also when the store is unreadable). */
+    suspend fun savedConfig(): ConnectionConfig? = loadSaved()
 
-    /** True when credentials are saved (used to choose the start screen). */
-    suspend fun hasSavedCredentials(): Boolean = credentialStore.load() != null
+    /** True when credentials are saved and readable (used to choose the start screen). */
+    suspend fun hasSavedCredentials(): Boolean = loadSaved() != null
 
     /**
      * Turns "remember" on or off for the active session. Turning it off wipes saved
@@ -115,7 +121,10 @@ class SessionManager(
         persistChoice(null, remember = false)
     }
 
-    /** Ends the session; optionally forgets saved credentials too. */
+    /**
+     * Ends the session; optionally forgets saved credentials too. Does not touch transfers:
+     * use [SignOut] from screens, which cancels them first.
+     */
     suspend fun signOut(forgetCredentials: Boolean) {
         mutableSession.value?.repository?.close()
         mutableSession.value = null
@@ -123,18 +132,13 @@ class SessionManager(
     }
 
     /**
-     * Repository for background transfers of [bucket]: the active session's, or one built
-     * from saved credentials when the process was restarted. Null when neither matches.
-     * The caller must not close a repository that belongs to the active session.
+     * Credentials for background transfers of [bucket]: the active session's config, or the
+     * saved one when the process was restarted. Null when neither matches [bucket].
      */
-    suspend fun repositoryFor(bucket: String): S3Repository? {
-        mutableSession.value?.takeIf { it.config.bucket == bucket }?.let { return it.repository }
-        val saved = credentialStore.load()?.takeIf { it.bucket == bucket } ?: return null
-        return repositoryFactory.create(saved)
-    }
+    override suspend fun configFor(bucket: String): ConnectionConfig? =
+        mutableSession.value?.config?.takeIf { it.bucket == bucket } ?: loadSaved()?.takeIf { it.bucket == bucket }
 
-    /** True when [repository] is owned by the active session (and must stay open). */
-    fun isSessionRepository(repository: S3Repository): Boolean = mutableSession.value?.repository === repository
+    override fun current(): S3Repository? = mutableSession.value?.repository
 
     /** Current remember flag. */
     suspend fun isRememberEnabled(): Boolean = settingsStore.settings.first().rememberCredentials
@@ -145,8 +149,12 @@ class SessionManager(
         return session
     }
 
+    /** Saves [config] (or clears the store); a failed save records "remember" as off. */
     private suspend fun persistChoice(config: ConnectionConfig?, remember: Boolean) {
-        settingsStore.setRememberCredentials(remember)
-        if (remember && config != null) credentialStore.save(config) else credentialStore.clear()
+        val saved = if (remember && config != null) credentialStore.save(config) else credentialStore.clear()
+        val saveFailed = config != null && saved is CredentialResult.Failure
+        settingsStore.setRememberCredentials(remember && !saveFailed)
     }
+
+    private suspend fun loadSaved(): ConnectionConfig? = credentialStore.load().valueOrNull()
 }

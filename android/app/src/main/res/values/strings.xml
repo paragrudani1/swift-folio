@@ -33,7 +33,7 @@
     <string name="step_status_done">Done</string>
     <string name="step_status_failed">Failed</string>
     <string name="field_access_key">Access key ID</string>
-    <string name="field_access_key_helper">%1$d+ chars · %2$d/128</string>
+    <string name="field_access_key_helper">%1$d+ chars · %2$d/%3$d</string>
     <string name="field_secret_key">Secret access key</string>
     <string name="field_secret_key_helper">%1$d+ chars</string>
     <string name="field_bucket">Bucket</string>
@@ -116,7 +116,7 @@
     <string name="clear_search">Clear search</string>
     <string name="new_folder">New folder</string>
     <string name="upload_files">Upload files</string>
-    <string name="show_uploads">Show uploads, %1$d%% done</string>
+    <string name="show_transfers">Show transfers, %1$d%% done</string>
     <string name="copy_keys">Copy keys</string>
     <string name="copy_key">Copy key</string>
     <string name="copy_s3_uri">Copy s3:// URI</string>
@@ -162,14 +162,17 @@
     <string name="hold_to_delete">Hold to delete</string>
     <string name="and_more">+ %1$d more</string>
 
-    <!-- Uploads -->
+    <!-- Transfers -->
     <string name="uploading_to">Uploading to</string>
+    <string name="queue_downloads">Downloads</string>
+    <string name="queue_transfers">Transfers</string>
     <string name="cancel_all">Cancel all</string>
-    <string name="cancel_upload">Cancel %1$s</string>
+    <string name="cancel_transfer">Cancel %1$s</string>
     <string name="upload_stats">%1$s / %2$s · %3$s</string>
     <string name="add_more_files">Add more files</string>
     <string name="clear_finished">Clear finished</string>
     <string name="upload_done">Uploaded</string>
+    <string name="download_done">Downloaded</string>
     <string name="status_queued">Queued</string>
     <string name="status_failed">Failed · %1$s</string>
 
@@ -241,8 +244,8 @@
         <item quantity="other">%1$d files queued for upload</item>
     </plurals>
     <plurals name="message_downloads_queued">
-        <item quantity="one">Downloading %1$d file to Downloads/SwiftFolio</item>
-        <item quantity="other">Downloading %1$d files to Downloads/SwiftFolio</item>
+        <item quantity="one">%1$d file queued for download</item>
+        <item quantity="other">%1$d files queued for download</item>
     </plurals>
     <plurals name="message_uploads_finished">
         <item quantity="one">%1$d file uploaded to %2$s</item>
@@ -255,6 +258,10 @@
     <plurals name="notification_downloaded">
         <item quantity="one">%1$d file saved to Downloads</item>
         <item quantity="other">%1$d files saved to Downloads</item>
+    </plurals>
+    <plurals name="notification_downloaded_app_storage">
+        <item quantity="one">%1$d file saved to app storage (removed if the app is uninstalled)</item>
+        <item quantity="other">%1$d files saved to app storage (removed if the app is uninstalled)</item>
     </plurals>
     <plurals name="notification_failed_count">
         <item quantity="one">%1$d failed</item>

@@ -54,6 +54,9 @@ private const val MODE_SCALE_IN = 0.96f
 private const val DISABLED_ALPHA = 0.38f
 private const val ERROR_SLAB_ALPHA = 0.12f
 private val ProgressRingSize = 24.dp
+private val ProgressRingStroke = 3.dp
+private val SearchIconSize = 20.dp
+private val IconOnlyPadding = 0.dp
 private val SearchPillHeight = 44.dp
 private val BarActionWidth = 64.dp
 
@@ -105,31 +108,32 @@ private fun BrowseBar(state: BrowserUiState, onAction: (BrowserAction) -> Unit, 
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(Spacing.space2),
         ) {
-            Icon(Icons.Rounded.Search, contentDescription = null, tint = colors.textTertiary, modifier = Modifier.size(20.dp))
+            Icon(Icons.Rounded.Search, contentDescription = null, tint = colors.textTertiary, modifier = Modifier.size(SearchIconSize))
             Text(stringResource(R.string.search_placeholder), style = MaterialTheme.typography.bodyMedium, color = colors.textTertiary, maxLines = 1)
         }
         IconButton(onClick = { onAction(BrowserAction.ShowSheet(BrowserSheet.NewFolder())) }) {
             Icon(Icons.Rounded.CreateNewFolder, contentDescription = stringResource(R.string.new_folder), tint = colors.textSecondary)
         }
+        val queue = state.transferQueue
         UploadButton(
-            progress = state.uploadProgress,
-            onClick = { if (state.uploadProgress != null) onAction(BrowserAction.ShowSheet(BrowserSheet.Uploads)) else onPickFiles() },
+            progress = queue.progress.takeIf { queue.isActive },
+            onClick = { if (queue.isActive) onAction(BrowserAction.ShowSheet(BrowserSheet.Transfers)) else onPickFiles() },
         )
     }
 }
 
-/** Gradient upload button that morphs into a progress chip while uploads run. */
+/** Gradient upload button that morphs into a progress chip while transfers run. */
 @Composable
 private fun UploadButton(progress: TransferProgress?, onClick: () -> Unit) {
     val colors = ConsoleTheme.colors
-    val label = if (progress == null) stringResource(R.string.upload_files) else stringResource(R.string.show_uploads, progress.percent)
+    val label = if (progress == null) stringResource(R.string.upload_files) else stringResource(R.string.show_transfers, progress.percent)
     Row(
         modifier = Modifier
             .heightIn(min = Spacing.touchTarget)
             .widthIn(min = Spacing.touchTarget)
             .background(colors.accentBrush, CircleShape)
             .clickable(role = Role.Button, onClickLabel = label, onClick = onClick)
-            .padding(horizontal = if (progress == null) 0.dp else Spacing.space3)
+            .padding(horizontal = if (progress == null) IconOnlyPadding else Spacing.space3)
             .animateContentSize(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Spacing.space2, Alignment.CenterHorizontally),
@@ -142,7 +146,7 @@ private fun UploadButton(progress: TransferProgress?, onClick: () -> Unit) {
                 modifier = Modifier.size(ProgressRingSize),
                 color = colors.onAccent,
                 trackColor = colors.onAccent.copy(alpha = DISABLED_ALPHA),
-                strokeWidth = 3.dp,
+                strokeWidth = ProgressRingStroke,
             )
             Text(stringResource(R.string.percent, progress.percent), style = ConsoleTheme.mono.meta, color = colors.onAccent)
         }

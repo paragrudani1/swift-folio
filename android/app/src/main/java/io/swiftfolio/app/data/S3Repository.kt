@@ -43,6 +43,7 @@ interface S3Repository {
      * Deletes [ids]: keys are deleted as-is, prefixes (ending in `/`) recursively.
      * Runs DeleteObjects in batches of 1000 and reports progress after each batch.
      * Per-key failures are returned in [DeleteSummary.failedKeys], not as a Failure.
+     * [DeleteSummary.freedBytes] covers the objects listed while expanding prefixes.
      */
     suspend fun delete(ids: Collection<String>, onProgress: (DeleteProgress) -> Unit): S3Result<DeleteSummary>
 
@@ -94,5 +95,10 @@ data class StorageUsage(val totalBytes: Long, val objectCount: Long)
 /** Progress of a running delete: [deleted] of [total] objects so far. */
 data class DeleteProgress(val deleted: Int, val total: Int)
 
-/** Outcome of a delete; [failedKeys] is empty when everything was removed. */
-data class DeleteSummary(val deleted: Int, val failedKeys: List<String>)
+/**
+ * Outcome of a delete; [failedKeys] is empty when everything was removed.
+ *
+ * @property freedBytes total size of the deleted objects found by listing the deleted prefixes.
+ *   Keys passed in directly are not listed, so their sizes are not included.
+ */
+data class DeleteSummary(val deleted: Int, val failedKeys: List<String>, val freedBytes: Long = 0)
